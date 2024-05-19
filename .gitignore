@@ -1,0 +1,15 @@
+venv
+/llama.cpp/
+offload
+output
+__pycache__/
+*.py[cod]
+*$py.class
+.idea
+/src/training/output/
+weights/
+build
+*.egg-info
+test.py
+dist
+test_service.py

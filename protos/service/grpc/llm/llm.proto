@@ -1,0 +1,51 @@
+
+syntax = "proto3";
+
+package service.llm;
+
+service Llm {
+
+  rpc prompt(PromptRequest) returns (stream PromptReply);
+
+}
+
+
+message PromptConfig {
+
+}
+
+message PromptRequest {
+  string id = 1;
+  string content = 2;
+  PromptConfig config = 3;
+}
+
+message PromptMetaData {
+
+  message Model {
+    string device = 1;
+    string dtype = 2;
+    string type = 3;
+    int32 number_of_devices = 4;
+  }
+
+  float tokens_per_second = 1;
+  float average_batch_size = 2;
+  Model model = 3;
+
+}
+
+message PromptReply {
+  string id = 1;
+  string content = 2;
+  bool is_end_of_sequence = 3;
+  PromptConfig config = 4;
+  PromptMetaData meta = 5;
+}
+
+// python3 -m grpc_tools.protoc \
+// -I protos \
+// --python_out=.  \
+// --pyi_out=. \
+// --grpc_python_out=. \
+// ./protos/service/grpc/llm/*.proto
