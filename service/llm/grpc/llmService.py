@@ -11,20 +11,22 @@ class LlmService(LlmServicer):
 
     model: ModelProcess = None
 
+    def __init__(self, model: ModelProcess, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.model = model
+
     async def prompt(self, request: PromptRequest, context: grpc.aio.ServicerContext) -> AsyncIterator[PromptReply]:
         logging.info(f'llm.prompt {request.id = } | {request.content = } | {request.config = }')
-        model = self.model or ModelProcess()
-        self.model = model
         message = GenerationPrompt(
             prompt=request.content,
             id=request.id
         )
-        model_info = model.model_info
+        model_info = self.model.model_info
         total_chunks, total_batch_size, total_tokens, total_process_time = 0, 0, 0, 0
         async for chunk in self.model.prompt(message=message):
             total_chunks += 1
             total_batch_size += chunk.batch_size
-            total_tokens += model.config.chunk_size
+            total_tokens += self.model.config.chunk_size
             total_process_time += chunk.process_time
             yield PromptReply(
                 id=chunk.id,
@@ -45,5 +47,7 @@ class LlmService(LlmServicer):
 
 
 def add_llm_service(server: grpc.aio.Server) -> grpc.aio.Server:
-    add_LlmServicer_to_server(LlmService(), server)
+    add_LlmServicer_to_server(LlmService(
+        model=ModelProcess()
+    ), server)
     return server

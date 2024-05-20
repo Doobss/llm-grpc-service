@@ -1,6 +1,3 @@
-import asyncio
-import logging
-
 from service.grpc import ClientBase
 from typing import AsyncIterator
 from service.llm.grpc.llm_pb2 import PromptRequest, PromptConfig, PromptReply
@@ -19,19 +16,3 @@ class LlmClient(ClientBase):
                 yield response
                 if response.is_end_of_sequence:
                     break
-
-
-async def run() -> None:
-    client = LlmClient()
-    request = PromptRequest(
-            id="test_id",
-            content="Hello",
-            config=PromptConfig()
-        )
-    # Read from an async generator
-    async for response in client.prompt(request=request):
-        print(f"Greeter client received from async generator: \n{response = }")
-
-if __name__ == "__main__":
-    logging.basicConfig()
-    asyncio.run(run())
