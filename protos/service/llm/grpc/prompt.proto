@@ -1,14 +1,6 @@
-
 syntax = "proto3";
 
-package service.llm;
-
-service Llm {
-
-  rpc prompt(PromptRequest) returns (stream PromptReply);
-
-}
-
+package llm.prompt;
 
 message PromptConfig {
 
@@ -42,10 +34,3 @@ message PromptReply {
   PromptConfig config = 4;
   PromptMetaData meta = 5;
 }
-
-// python3 -m grpc_tools.protoc \
-// -I protos \
-// --python_out=.  \
-// --pyi_out=. \
-// --grpc_python_out=. \
-// ./protos/service/llm/grpc/*.proto
