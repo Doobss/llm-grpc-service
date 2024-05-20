@@ -1,8 +1,8 @@
-from . import grpc
+from . import server, client
 
 
 def start() -> None:
-    grpc.server.start()
+    server.start()
 
 
 if __name__ == '__main__':

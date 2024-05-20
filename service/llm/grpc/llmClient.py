@@ -1,10 +1,10 @@
 import asyncio
 import logging
 
-from service.grpc.clientBase import ClientBase
+from service.grpc import ClientBase
 from typing import AsyncIterator
-from service.grpc.llm.llm_pb2 import PromptRequest, PromptConfig, PromptReply
-from service.grpc.llm.llm_pb2_grpc import LlmStub
+from service.llm.grpc.llm_pb2 import PromptRequest, PromptConfig, PromptReply
+from service.llm.grpc.llm_pb2_grpc import LlmStub
 
 
 class LlmClient(ClientBase):

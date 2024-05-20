@@ -2,7 +2,7 @@ import click
 import asyncio
 from typing import Union
 from uuid import uuid4
-from service import grpc
+from client import LlmClient, PromptReply, PromptRequest, PromptConfig
 from .echo import echo, grey, green, red, magenta, cyan
 
 
@@ -59,7 +59,7 @@ async def start_client(
     ) -> None:
     connect_attempts = 0
     max_retries = 10
-    client = grpc.LlmClient(user=username, host=host, port=port, secure=secure)
+    client = LlmClient(user=username, host=host, port=port, secure=secure)
     while max_retries > connect_attempts:
         try:
             connect_attempts = 0
@@ -69,10 +69,10 @@ async def start_client(
             while True:
                 input_prompt = click.prompt(f'{green("user")}')
                 last_message: Union[str, None] = None
-                request = grpc.PromptRequest(
+                request = PromptRequest(
                     id=str(uuid4()),
                     content=apply_template(input_prompt),
-                    config=grpc.PromptConfig()
+                    config=PromptConfig()
                 )
                 async for message in client.prompt(request=request):
                     last_message = echo_message(message, last_message)
@@ -89,8 +89,8 @@ async def start_client(
         echo(f'''{red("Exiting")}: exceeded max connection retries, try again in a bit.''')
 
 
-def echo_message(message: grpc.PromptReply, last_message: Union[str, None]) -> str:
-    if isinstance(message, grpc.PromptReply):
+def echo_message(message: PromptReply, last_message: Union[str, None]) -> str:
+    if isinstance(message, PromptReply):
         content = message.content
         if last_message is not None:
             new_content = content.replace(last_message, "")

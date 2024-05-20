@@ -4,7 +4,7 @@ from .grpc import grpc_server_command
 from .echo import echo
 
 
-@click.group(name='gpse-llm')
+@click.group(name='llm')
 @click.option('-v', '--verbose', 'verbose',
               default=0,
               type=int,

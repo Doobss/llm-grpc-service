@@ -1,5 +1,5 @@
 import click
-from service import grpc
+import service as grpc
 from .echo import echo, grey, green
 
 
@@ -24,7 +24,7 @@ def grpc_server_command(
         port: int,
     ) -> None:
     """
-    Starts the llm grpc server...
+    Starts the llm llm server...
     """
     echo.verbose(f'''\n{green('Starting gprc server with the following params')}:''')
     echo.verbose(f'\t{username = } {grey("(overwrite with -U option)")}'

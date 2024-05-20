@@ -48,4 +48,4 @@ message PromptReply {
 // --python_out=.  \
 // --pyi_out=. \
 // --grpc_python_out=. \
-// ./protos/service/grpc/llm/*.proto
+// ./protos/service/llm/grpc/*.proto

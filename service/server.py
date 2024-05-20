@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 import grpc
-from service.grpc.llm.llmService import add_llm_service
+from service.llm import add_llm_service
 
 
 async def serve() -> None:
