@@ -27,6 +27,7 @@ class LLmClient:
     _prompt_method: _PromptMethod
 
     def __init__(self, target: str = None, credentials: grpc.ChannelCredentials = None) -> None:
+        logging.basicConfig(level=logging.INFO)
         logger.info(f'Starting Llm client using grpc reflection. {target = } | {bool(credentials) = }')
         self.reflection = GrpcReflection(
             target=target,
@@ -82,4 +83,4 @@ if __name__ == '__main__':
               'GPT4 Correct User: Great! query: What are the best cheeses? ' \
               'GPT4 Correct Assistant: response:'
     for message in client.prompt(content=content):
-        print(f'{message = }')
+        logger.info(f'{message = }')

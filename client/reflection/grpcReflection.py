@@ -3,7 +3,7 @@ import grpc
 from typing import Type, Union
 from google.protobuf.message import Message
 from google.protobuf.descriptor_pool import DescriptorPool
-from google.protobuf.message_factory import MessageFactory
+from google.protobuf.message_factory import GetMessageClass
 from grpc_reflection.v1alpha.proto_reflection_descriptor_database import ProtoReflectionDescriptorDatabase
 from google.protobuf.descriptor import (
     ServiceDescriptor,
@@ -28,14 +28,13 @@ class Method(_Described):
 
     def __init__(self, descriptor: MethodDescriptor, descriptor_pool: DescriptorPool) -> None:
         self.descriptor = descriptor
-        factory = MessageFactory(descriptor_pool)
         self.messages = {
-            "input": factory.GetPrototype(
+            "input": GetMessageClass(
                 descriptor=descriptor_pool.FindMessageTypeByName(
                     descriptor.input_type.full_name
                 )
             ) if isinstance(descriptor.input_type, Descriptor) else None,
-            "output": factory.GetPrototype(
+            "output": GetMessageClass(
                 descriptor=descriptor_pool.FindMessageTypeByName(
                     descriptor.output_type.full_name
                 )
