@@ -2,10 +2,14 @@ syntax = "proto3";
 
 package llm.service;
 
-import public "service/llm/grpc/prompt.proto";
+import "service/llm/grpc/prompt.proto";
+
+
 
 service Llm {
 
+  // Ask a llm a question. (The content of the message is given to the model exactly as sent, no formatting or templating)
   rpc prompt(llm.prompt.PromptRequest) returns (stream llm.prompt.PromptReply);
 
 }
+oh was

@@ -2,7 +2,7 @@ import logging
 
 import grpc
 from typing import AsyncIterator
-from service.llm import ModelProcess, GenerationPrompt
+from service.llm.generation import ModelProcess, GenerationPrompt
 from service.llm.grpc.prompt_pb2 import PromptRequest, PromptReply, PromptMetaData
 from service.llm.grpc.service_pb2_grpc import LlmServicer, add_LlmServicer_to_server
 

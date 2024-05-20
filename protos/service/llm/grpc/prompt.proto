@@ -2,16 +2,20 @@ syntax = "proto3";
 
 package llm.prompt;
 
+
+// Ways to configure a prompt request.
 message PromptConfig {
 
 }
 
+// A request for llm streaming generation.
 message PromptRequest {
   string id = 1;
   string content = 2;
-  PromptConfig config = 3;
+  optional PromptConfig config = 3;
 }
 
+// Data about the generation process and the model.
 message PromptMetaData {
 
   message Model {
@@ -27,10 +31,11 @@ message PromptMetaData {
 
 }
 
+// A generated chuck where if is_end_of_sequence is True it will be the last of the stream.
 message PromptReply {
   string id = 1;
   string content = 2;
   bool is_end_of_sequence = 3;
-  PromptConfig config = 4;
+  optional PromptConfig config = 4;
   PromptMetaData meta = 5;
 }

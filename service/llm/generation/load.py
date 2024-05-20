@@ -6,7 +6,7 @@ from transformers import (
     AutoTokenizer,
     BitsAndBytesConfig,
 )
-from .classes.modelConfig import ModelConfig
+from .modelConfig import ModelConfig
 from service.typed import TransformerTokenizer, TransformerModel
 logger = logging.getLogger()
 ROOT_PATH = Path(__file__).parent.parent

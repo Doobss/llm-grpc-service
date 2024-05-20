@@ -5,8 +5,7 @@ from transformers import BatchEncoding
 from typing import List
 
 from service.typed import device as _device, IntTensor, TransformerModel
-from service.llm.load import load_model_tokenizer_for_generate
-from .tokenizedGenerationPrompt import TokenizedGenerationPrompt
+from .load import load_model_tokenizer_for_generate
 from .tokenizedGenerationPromptBatch import TokenizedGenerationPromptBatch
 from .tokenizer import Tokenizer
 from .modelConfig import ModelConfig
