@@ -2,6 +2,7 @@ import logging
 
 import grpc
 from typing import AsyncIterator
+from service.llm.grpc.service_pb2 import DESCRIPTOR
 from service.llm.generation import ModelProcess, GenerationPrompt
 from service.llm.grpc.prompt_pb2 import PromptRequest, PromptReply, PromptMetaData
 from service.llm.grpc.service_pb2_grpc import LlmServicer, add_LlmServicer_to_server
@@ -51,3 +52,7 @@ def add_llm_service(server: grpc.aio.Server) -> grpc.aio.Server:
         model=ModelProcess()
     ), server)
     return server
+
+
+def llm_service_descriptor() -> str:
+    return DESCRIPTOR.services_by_name['Llm'].full_name

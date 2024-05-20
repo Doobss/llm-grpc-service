@@ -16,7 +16,8 @@ dynamic = ['version']
 dependencies = [
     "click==8.1.7",
     "grpcio",
-    "grpcio-tools"
+    "grpcio-tools",
+    "grpcio-reflection"
 ]
 
 [project.optional-dependencies]

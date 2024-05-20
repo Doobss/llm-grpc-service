@@ -12,4 +12,3 @@ service Llm {
   rpc prompt(llm.prompt.PromptRequest) returns (stream llm.prompt.PromptReply);
 
 }
-oh was
