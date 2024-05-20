@@ -6,6 +6,7 @@ from client import LlmClient, PromptReply, PromptRequest, PromptConfig
 from .echo import echo, grey, green, red, magenta, cyan
 
 
+
 @click.command(name='client')
 @click.option('-u', '--user', 'username',
               prompt="Please enter a user name",
