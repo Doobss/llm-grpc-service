@@ -15,8 +15,8 @@ classifiers = [
 dynamic = ['version']
 dependencies = [
     "click==8.1.7",
-    "pydantic",
     "grpcio",
+    "grpcio-tools"
 ]
 
 [project.optional-dependencies]
@@ -28,7 +28,6 @@ server = [
     "torch",
     "sentencepiece",
     "safetensors",
-    "grpcio-tools"
 ]
 
 [project.scripts]

@@ -11,7 +11,7 @@ from .echo import echo, green
 def compile_command(path: str) -> None:
     proto_files = _get_all_proto_files(root=path)
     printed_protos = ",".join([f"\n\t{green(file) }"for file in proto_files])
-    echo(f'Compiling protos @ {green(path)}: [{printed_protos}\n]')
+    echo(f'Compiling proto files @ {green(path)}: [{printed_protos}\n]')
     command_args = [
         "grpc_tools.protoc",
         f"--proto_path={path}",
