@@ -9,12 +9,3 @@ service Llm {
   rpc prompt(llm.prompt.PromptRequest) returns (stream llm.prompt.PromptReply);
 
 }
-
-
-
-// python3 -m grpc_tools.protoc \
-// -I protos \
-// --python_out=.  \
-// --pyi_out=. \
-// --grpc_python_out=. \
-// ./protos/service/llm/grpc/*.proto

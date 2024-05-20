@@ -1,7 +1,7 @@
 from service.grpc import ClientBase
 from typing import AsyncIterator
-from service.llm.grpc.llm_pb2 import PromptRequest, PromptConfig, PromptReply
-from service.llm.grpc.llm_pb2_grpc import LlmStub
+from service.llm.grpc.prompt_pb2 import PromptRequest, PromptConfig, PromptReply
+from service.llm.grpc.service_pb2_grpc import LlmStub
 
 
 class LlmClient(ClientBase):
