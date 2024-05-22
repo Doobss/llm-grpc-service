@@ -57,6 +57,8 @@ def _mkdirs(root: str, paths_to_proto_files: list[str]) -> None:
             checked_paths.add(dir_path)
 
 
+start = compile_command
+
 if __name__ == '__main__':
   compile_command()
 
