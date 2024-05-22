@@ -8,7 +8,7 @@ from .echo import echo, green, magenta
 @click.command(name='compile')
 @click.option('-r', '--root', 'root',
               default="protos",
-              type=str)
+              type=str).
 @click.option('-o', '--output', 'output',
               default=".",
               type=str)
@@ -55,3 +55,8 @@ def _mkdirs(root: str, paths_to_proto_files: list[str]) -> None:
             echo.verbose(f'Checking for directory @ {magenta(str(dir_path))}')
             dir_path.mkdir(parents=True, exist_ok=True)
             checked_paths.add(dir_path)
+
+
+if __name__ == '__main__':
+  compile_command()
+
