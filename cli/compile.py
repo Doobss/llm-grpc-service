@@ -8,7 +8,7 @@ from .echo import echo, green, magenta
 @click.command(name='compile')
 @click.option('-r', '--root', 'root',
               default="protos",
-              type=str).
+              type=str)
 @click.option('-o', '--output', 'output',
               default=".",
               type=str)
