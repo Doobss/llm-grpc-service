@@ -33,6 +33,7 @@ server = [
 
 [project.scripts]
 llm =  "cli:start"
+llm-compile =  "cli:compile"
 
 [tool.setuptools]
 include-package-data = true
