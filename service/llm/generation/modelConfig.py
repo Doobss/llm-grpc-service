@@ -49,7 +49,7 @@ def _get_default_quantization_config() -> BitsAndBytesConfig:
 
 def _get_default_generation_config() -> GenerationConfig:
     generation_config = GenerationConfig(
-        temperature=0.55,
+        temperature=0.15,
         do_sample=True,
         repetition_penalty=1.1,
         exponential_decay_length_penalty=(200, 1.5)

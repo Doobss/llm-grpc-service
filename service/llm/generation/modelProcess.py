@@ -92,6 +92,9 @@ class ModelProcess:
         signal.signal(signal.SIGTERM, shutdown)
         self._model_process.start()
         self.config = self._output_queue.get()
+        log.info(f'Model config: {self.config.model}')
+        log.info(f'Model generation config: {self.config.generation}')
+        log.info(f'Model quantization config: {self.config.quantization}')
         self._process_output_thread.start()
         log.info(f'Model process running pid: {self._model_process.pid}')
 

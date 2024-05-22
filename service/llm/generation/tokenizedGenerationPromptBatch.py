@@ -91,6 +91,10 @@ class TokenizedGenerationPromptBatch(GenerationBatch[TokenizedGenerationPrompt])
         return [prompt for prompt in self.prompts if prompt.reached_eos]
 
     @property
+    def gen_id(self) -> str:
+        return '-'.join([prompt.id for prompt in self.generated_prompts])
+
+    @property
     def model_inputs(self) -> BatchEncoding:
         if self._encoded_cache is not None:
             return self._encoded_cache

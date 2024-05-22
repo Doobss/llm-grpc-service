@@ -6,22 +6,27 @@ from .echo import echo, green, magenta
 
 
 @click.command(name='compile')
-@click.option('-p', '--path', 'path',
+@click.option('-r', '--root', 'root',
               default="protos",
               type=str)
-def compile_command(path: str) -> None:
-    proto_files = _get_all_proto_files(root=path)
-    _mkdirs(path, proto_files)
+@click.option('-o', '--output', 'output',
+              default=".",
+              type=str)
+def compile_command(root: str, output: str) -> None:
+    echo.verbose(count=2, text=f'compile called with args: {root = } | {output = } ')
+    proto_files = _get_all_proto_files(root=root)
+    _mkdirs(root, proto_files)
     printed_protos = ",".join([f"\n\t{green(file) }"for file in proto_files])
-    echo(f'Compiling proto files @ {green(path)}: [{printed_protos}\n]')
+    echo(f'Compiling proto files @ {green(root)}: [{printed_protos}\n]')
     command_args = [
         "grpc_tools.protoc",
-        f"--proto_path={path}",
-        "--python_out=.",
-        "--pyi_out=.",
-        "--grpc_python_out=.",
+        f"--proto_path={root}",
+        f"--python_out={output}",
+        f"--pyi_out={output}",
+        f"--grpc_python_out={output}",
         *proto_files
     ]
+
     echo.verbose(f'Running with args {command_args = }')
     protoc.main(command_args)
 
@@ -40,8 +45,13 @@ def _get_all_proto_files(root: str) -> list[str]:
     return proto_files
 
 
-def _mkdirs(root: str, proto_files: list[str]) -> None:
-    for file_path in proto_files:
-        dir_path = Path(os.sep.join(file_path.split(os.sep)[:-1]).replace(root, "."))
-        echo.verbose(f'Checking for directory @ {magenta(str(dir_path))}')
-        dir_path.mkdir(parents=True, exist_ok=True)
+def _mkdirs(root: str, paths_to_proto_files: list[str]) -> None:
+    paths_without_proto_root = [file_path.replace(root, ".") for file_path in paths_to_proto_files]
+    echo.verbose(count=2, text=f'_mkdirs: {paths_without_proto_root = }')
+    checked_paths: set[Path] = set()
+    for file_path in paths_without_proto_root:
+        dir_path = Path(os.path.join(*file_path.split(os.sep)[:-1]))
+        if dir_path not in checked_paths:
+            echo.verbose(f'Checking for directory @ {magenta(str(dir_path))}')
+            dir_path.mkdir(parents=True, exist_ok=True)
+            checked_paths.add(dir_path)
