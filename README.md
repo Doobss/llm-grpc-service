@@ -1,5 +1,6 @@
 ## Setup
 ```bash
+sudo apt update -y
 sudo apt install python3.11 python3.11-venv -y
 python3.11 -m venv venv
 source venv/bin/activate
