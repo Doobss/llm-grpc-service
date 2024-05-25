@@ -18,3 +18,4 @@ python3.11 -m pip install .[server]
  --grpc_python_out=. \
  ./protos/[path to proto dir]/*.proto
 ```
+
