@@ -1,22 +1,27 @@
 use crate::model::ModelType;
-use crate::Result;
+use crate::{Error, Result};
+use candle_core::Tensor;
 use hf_hub::{api, api::sync::ApiRepo, Repo, RepoType};
+use serde_json;
 use std::path::PathBuf;
 use tokenizers;
 
 #[derive(Debug, Clone)]
 pub struct TokenizerFiles {
     model: PathBuf,
-    config: Option<PathBuf>,
+    config: PathBuf,
+    special_tokens: Option<PathBuf>,
 }
 
 impl TokenizerFiles {
     pub fn from_repo(repo: &ApiRepo) -> Result<Self> {
-        let model_path = repo.get("tokenizer.json")?;
-        let config_json: Option<PathBuf> = repo.get("tokenizer_config.json").ok();
+        let model = repo.get("tokenizer.json")?;
+        let config = repo.get("tokenizer_config.json")?;
+        let special_tokens = repo.get("special_tokens_map.json").ok();
         Ok(Self {
-            model: model_path,
-            config: config_json,
+            model,
+            config,
+            special_tokens,
         })
     }
 }
@@ -24,9 +29,20 @@ impl TokenizerFiles {
 #[derive(Debug)]
 pub struct Tokenizer {
     inner: tokenizers::Tokenizer,
+    padding: tokenizers::PaddingParams,
 }
 
 impl Tokenizer {
+    pub fn encode_batch(&self, inputs: Vec<String>) -> Result<Vec<tokenizers::Encoding>> {
+        let encodings = match self.inner.encode_batch(inputs, true) {
+            Ok(batch) => Ok(batch),
+            Err(error) => Err(Error::TokenizerError(error.to_string())),
+        };
+        let mut encodings = encodings?;
+        tokenizers::pad_encodings(&mut encodings, &self.padding)?;
+        Ok(encodings)
+    }
+
     pub fn load(model_type: ModelType) -> Result<Self> {
         let api = api::sync::ApiBuilder::new()
             .with_cache_dir("./.cache/huggingface".into())
@@ -43,8 +59,41 @@ impl Tokenizer {
     }
 
     pub fn from_files(files: TokenizerFiles) -> Result<Self> {
+        use tokenizers::{PaddingDirection, PaddingParams, PaddingStrategy};
+        tracing::info!("loading tokenizer config: {:?}", &files.config);
+        let config: serde_json::Value = match files.special_tokens {
+            Some(path) => serde_json::from_slice(&std::fs::read(path)?)?,
+            None => serde_json::from_slice(&std::fs::read(files.config)?)?,
+        };
+
+        let pad_token: String = match config.get("pad_token") {
+            Some(value) => value
+                .as_str()
+                .map(|slice| slice.to_owned())
+                .expect("pad_token is not a string in the tokenizer config.json"),
+            None => match config.get("bos_token") {
+                Some(value) => value
+                    .as_str()
+                    .map(|slice| slice.to_owned())
+                    .expect("bos_token is not a string in the tokenizer config.json"),
+                None => "[PAD]".to_owned(),
+            },
+        };
+
+        tracing::info!("tokenizer config: {:?}", config);
         let tokenizer = tokenizers::Tokenizer::from_file(files.model)?;
-        Ok(Self { inner: tokenizer })
+        let pad_id = tokenizer.encode(pad_token.clone(), false)?.get_ids()[0];
+        Ok(Self {
+            inner: tokenizer,
+            padding: PaddingParams {
+                strategy: PaddingStrategy::BatchLongest,
+                direction: PaddingDirection::Left,
+                pad_to_multiple_of: None,
+                pad_id,
+                pad_type_id: pad_id,
+                pad_token,
+            },
+        })
     }
 
     pub fn from_repo(repo: &ApiRepo) -> Result<Self> {

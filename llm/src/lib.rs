@@ -11,6 +11,7 @@ extern crate tracing_subscriber;
 
 mod config;
 mod error;
+mod logits_processor;
 mod model;
 mod tokenizer;
 

@@ -1,4 +1,5 @@
 use crate::{Error, Result};
+use candle_core::Tensor;
 use candle_examples::hub_load_safetensors;
 use candle_nn::VarBuilder;
 use candle_transformers::models;
@@ -31,8 +32,14 @@ impl ModelType {
 }
 
 #[derive(Debug)]
+enum InnerModel {
+    Mistral(models::mistral::Model),
+    QuantizedMistral(models::quantized_mistral::Model),
+}
+
+#[derive(Debug)]
 pub struct Model {
-    inner: models::mistral::Model,
+    inner: InnerModel,
     device: candle_core::Device,
     dtype: candle_core::DType,
 }
@@ -60,7 +67,7 @@ impl Model {
         let vars = unsafe { VarBuilder::from_mmaped_safetensors(&files.weights, dtype, &device)? };
         let model = models::mistral::Model::new(&config, vars)?;
         Ok(Self {
-            inner: model,
+            inner: InnerModel::Mistral(model),
             device,
             dtype,
         })
@@ -81,6 +88,13 @@ impl Model {
             Ok(candle_core::DType::BF16)
         } else {
             Ok(candle_core::DType::F32)
+        }
+    }
+
+    pub fn forward(&mut self, input_tokens: Tensor, sequence_offset: usize) -> Result<Tensor> {
+        match &mut self.inner {
+            InnerModel::Mistral(m) => Ok(m.forward(&input_tokens, sequence_offset)?),
+            InnerModel::QuantizedMistral(m) => Ok(m.forward(&input_tokens, sequence_offset)?),
         }
     }
 }
