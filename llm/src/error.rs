@@ -1,6 +1,5 @@
-extern crate candle_core;
-
 use candle_core::error::Error as CandleError;
+use hf_hub::api::sync::ApiError as HfApiError;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -9,6 +8,7 @@ pub type ErrorMessage = String;
 #[derive(Debug)]
 pub enum Error {
     CandleError(ErrorMessage),
+    HfApiError(ErrorMessage),
 }
 
 impl core::fmt::Display for Error {
@@ -20,6 +20,12 @@ impl core::fmt::Display for Error {
 impl From<CandleError> for Error {
     fn from(value: CandleError) -> Self {
         Self::CandleError(value.to_string())
+    }
+}
+
+impl From<HfApiError> for Error {
+    fn from(value: HfApiError) -> Self {
+        Self::HfApiError(value.to_string())
     }
 }
 
