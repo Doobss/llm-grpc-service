@@ -15,3 +15,7 @@ documentation = ""
 [workspace.dependencies]
 llm = { path = './llm' }
 grpc = { path = './grpc' }
+candle-core = { git = "https://github.com/huggingface/candle.git", version = "0.5.1", features = [
+    "cuda",
+] }
+candle-transformers = { git = "https://github.com/huggingface/candle.git", version = "0.5.1" }
