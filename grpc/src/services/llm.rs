@@ -1,7 +1,4 @@
-pub mod pb {
-    tonic::include_proto!("llm.service");
-}
-use pb::{PromptReply, PromptRequest};
+use crate::services::v1::*;
 use std::{pin::Pin, time::Duration};
 use tokio::sync::mpsc;
 use tokio_stream::{wrappers::ReceiverStream, Stream, StreamExt};
@@ -14,7 +11,7 @@ type ResponseStream = Pin<Box<dyn Stream<Item = Result<PromptReply, Status>> + S
 pub struct LlmServer {}
 
 #[tonic::async_trait]
-impl pb::llm_server::Llm for LlmServer {
+impl llm_server::Llm for LlmServer {
     type promptStream = ResponseStream;
 
     async fn prompt(&self, req: Request<PromptRequest>) -> LlmResult<Self::promptStream> {
@@ -54,8 +51,8 @@ impl pb::llm_server::Llm for LlmServer {
     }
 }
 
-pub fn service() -> pb::llm_server::LlmServer<LlmServer> {
+pub fn service() -> llm_server::LlmServer<LlmServer> {
     tracing::info!("Adding llm service");
     let server = LlmServer {};
-    pb::llm_server::LlmServer::new(server)
+    llm_server::LlmServer::new(server)
 }

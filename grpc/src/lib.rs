@@ -1,4 +1,5 @@
 extern crate llm;
+extern crate thiserror;
 extern crate tonic;
 extern crate tracing;
 extern crate tracing_subscriber;

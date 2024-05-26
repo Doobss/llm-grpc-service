@@ -8,49 +8,16 @@ pub type Result<T> = core::result::Result<T, Error>;
 
 pub type ErrorMessage = String;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    CandleError(CandleError),
-    HfApiError(ErrorMessage),
-    StdIoError(ErrorMessage),
-    JsonError(ErrorMessage),
-    TokenizerError(ErrorMessage),
+    #[error(transparent)]
+    CandleError(#[from] CandleError),
+    #[error(transparent)]
+    HfApiError(#[from] HfApiError),
+    #[error(transparent)]
+    StdIoError(#[from] StdIoError),
+    #[error(transparent)]
+    JsonError(#[from] JsonError),
+    #[error(transparent)]
+    TokenizerError(#[from] TokenizerError),
 }
-
-impl core::fmt::Display for Error {
-    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
-        write!(fmt, "{self:?}")
-    }
-}
-
-impl From<CandleError> for Error {
-    fn from(value: CandleError) -> Self {
-        Self::CandleError(value)
-    }
-}
-
-impl From<HfApiError> for Error {
-    fn from(value: HfApiError) -> Self {
-        Self::HfApiError(value.to_string())
-    }
-}
-
-impl From<StdIoError> for Error {
-    fn from(value: StdIoError) -> Self {
-        Self::StdIoError(value.to_string())
-    }
-}
-
-impl From<JsonError> for Error {
-    fn from(value: JsonError) -> Self {
-        Self::JsonError(value.to_string())
-    }
-}
-
-impl From<TokenizerError> for Error {
-    fn from(value: TokenizerError) -> Self {
-        Self::TokenizerError(value.to_string())
-    }
-}
-
-impl std::error::Error for Error {}

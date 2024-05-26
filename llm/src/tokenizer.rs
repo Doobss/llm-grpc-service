@@ -2,7 +2,6 @@ use crate::{BatchEncoding, Error, ModelType, Prompt, Result};
 use hf_hub::{api, api::sync::ApiRepo, Repo, RepoType};
 use serde_json;
 use std::path::PathBuf;
-use tokenizers::{self, parallelism::MaybeParallelIterator};
 
 #[derive(Debug, Clone)]
 pub struct TokenizerFiles {
@@ -43,7 +42,7 @@ impl Tokenizer {
         }
         let encodings = match self.inner.encode_batch(inputs, true) {
             Ok(batch) => Ok(batch),
-            Err(error) => Err(Error::TokenizerError(error.to_string())),
+            Err(error) => Err(Error::TokenizerError(error)),
         };
         let encodings = encodings?;
         // tokenizers::pad_encodings(&mut encodings, &self.padding)?;

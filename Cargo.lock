@@ -1012,6 +1012,7 @@ version = "0.1.0"
 dependencies = [
  "llm",
  "prost",
+ "thiserror",
  "tokio",
  "tokio-stream",
  "tonic",
@@ -1362,6 +1363,7 @@ dependencies = [
  "hf-hub",
  "serde",
  "serde_json",
+ "thiserror",
  "tokenizers",
  "tracing",
  "tracing-subscriber",
