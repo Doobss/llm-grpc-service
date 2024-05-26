@@ -314,6 +314,7 @@ version = "0.5.1"
 source = "git+https://github.com/huggingface/candle.git#0814dfd148474f436bb43314fc41639a7b429aab"
 dependencies = [
  "anyhow",
+ "bindgen_cuda",
  "candle-core",
  "candle-nn",
  "candle-transformers",

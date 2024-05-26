@@ -36,6 +36,22 @@ impl BatchEncoding {
         return self.ids.shape().dims()[1];
     }
 
+    pub fn append_tokens(&mut self, next_tokens: &Tensor) -> Result<()> {
+        self.attention_mask = Tensor::cat(
+            &[
+                &self.attention_mask,
+                &Tensor::ones(
+                    next_tokens.shape().dims(),
+                    next_tokens.dtype(),
+                    next_tokens.device(),
+                )?,
+            ],
+            1,
+        )?;
+        self.ids = Tensor::cat(&[&self.ids, next_tokens], 1)?;
+        Ok(())
+    }
+
     pub fn merge_batch(&mut self, mut other_batch: BatchEncoding) -> Result<()> {
         match (self.token_length(), other_batch.token_length()) {
             (self_length, other_length) if self_length > other_length => {

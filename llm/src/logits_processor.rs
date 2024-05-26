@@ -11,7 +11,7 @@ pub struct LogitsProcessor {
 impl LogitsProcessor {
     pub fn sample(&mut self, logits: &Tensor) -> Result<Tensor> {
         match self.sampling {
-            generation::Sampling::ArgMax => Ok(logits.argmax(1)?),
+            generation::Sampling::ArgMax => Ok(logits.argmax_keepdim(1)?),
             _ => Ok(Tensor::new(
                 vec![self.inner.sample(logits)?],
                 logits.device(),

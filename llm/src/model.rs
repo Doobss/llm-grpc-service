@@ -91,10 +91,14 @@ impl Model {
         }
     }
 
-    pub fn forward(&mut self, input_tokens: Tensor, sequence_offset: usize) -> Result<Tensor> {
+    pub fn forward(&mut self, input_tokens: &Tensor, sequence_offset: usize) -> Result<Tensor> {
         match &mut self.inner {
-            InnerModel::Mistral(m) => Ok(m.forward(&input_tokens, sequence_offset)?),
-            InnerModel::QuantizedMistral(m) => Ok(m.forward(&input_tokens, sequence_offset)?),
+            InnerModel::Mistral(m) => Ok(m
+                .forward(input_tokens, sequence_offset)
+                .expect("Error in model inner forward.")),
+            InnerModel::QuantizedMistral(m) => Ok(m
+                .forward(input_tokens, sequence_offset)
+                .expect("Error in model inner forward.")),
         }
     }
 }

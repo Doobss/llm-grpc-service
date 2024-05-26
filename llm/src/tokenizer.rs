@@ -2,7 +2,7 @@ use crate::{BatchEncoding, Error, ModelType, Prompt, Result};
 use hf_hub::{api, api::sync::ApiRepo, Repo, RepoType};
 use serde_json;
 use std::path::PathBuf;
-use tokenizers;
+use tokenizers::{self, parallelism::MaybeParallelIterator};
 
 #[derive(Debug, Clone)]
 pub struct TokenizerFiles {
@@ -45,6 +45,14 @@ impl Tokenizer {
         let mut encodings = encodings?;
         tokenizers::pad_encodings(&mut encodings, &self.padding)?;
         BatchEncoding::from_encodings(keys, encodings, &self.padding)
+    }
+
+    pub fn batch_decode(&self, token_ids: &Vec<Vec<u32>>) -> Result<Vec<String>> {
+        let mut token_refs: Vec<&[u32]> = Vec::with_capacity(token_ids.len());
+        for token_ref in token_ids {
+            token_refs.push(token_ref);
+        }
+        Ok(self.inner.decode_batch(&token_refs, true)?)
     }
 
     pub fn get_token(&self, token_s: &str) -> Option<u32> {
