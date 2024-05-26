@@ -14,10 +14,12 @@ mod config;
 mod error;
 mod logits_processor;
 mod model;
+mod prompt;
 mod tokenizer;
 
 pub use batch_encoding::BatchEncoding;
 pub use config::Config;
 pub use error::{Error, Result};
 pub use model::{Model, ModelType};
+pub use prompt::Prompt;
 pub use tokenizer::Tokenizer;

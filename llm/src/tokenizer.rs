@@ -1,6 +1,4 @@
-use crate::batch_encoding::BatchEncoding;
-use crate::model::ModelType;
-use crate::{Error, Result};
+use crate::{BatchEncoding, Error, ModelType, Prompt, Result};
 use hf_hub::{api, api::sync::ApiRepo, Repo, RepoType};
 use serde_json;
 use std::path::PathBuf;
@@ -33,14 +31,20 @@ pub struct Tokenizer {
 }
 
 impl Tokenizer {
-    pub fn encode_batch(&self, inputs: Vec<String>) -> Result<BatchEncoding> {
+    pub fn encode_batch(&self, prompts: Vec<Prompt>) -> Result<BatchEncoding> {
+        let mut keys = Vec::new();
+        let mut inputs = Vec::new();
+        for prompt in prompts {
+            keys.push(prompt.id);
+            inputs.push(prompt.content);
+        }
         let encodings = match self.inner.encode_batch(inputs, true) {
             Ok(batch) => Ok(batch),
             Err(error) => Err(Error::TokenizerError(error.to_string())),
         };
         let mut encodings = encodings?;
         tokenizers::pad_encodings(&mut encodings, &self.padding)?;
-        BatchEncoding::from_encodings(encodings, &self.padding)
+        BatchEncoding::from_encodings(keys, encodings, &self.padding)
     }
 
     pub fn get_token(&self, token_s: &str) -> Option<u32> {

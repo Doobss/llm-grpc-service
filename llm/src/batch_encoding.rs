@@ -5,13 +5,18 @@ use tokenizers::{Encoding, PaddingParams};
 
 #[derive(Debug)]
 pub struct BatchEncoding {
+    pub keys: Vec<String>,
     pub ids: Tensor,
     pub attention_mask: Tensor,
     padding: PaddingParams,
 }
 
 impl BatchEncoding {
-    pub fn from_encodings(encodings: Vec<Encoding>, padding: &PaddingParams) -> Result<Self> {
+    pub fn from_encodings(
+        keys: Vec<String>,
+        encodings: Vec<Encoding>,
+        padding: &PaddingParams,
+    ) -> Result<Self> {
         let mut ids: Vec<&[u32]> = Vec::new();
         let mut attentions: Vec<&[u32]> = Vec::new();
         for encoding in encodings.iter() {
@@ -20,6 +25,7 @@ impl BatchEncoding {
         }
         let device = get_device(false)?;
         Ok(Self {
+            keys,
             ids: Tensor::new(ids, &device)?,
             attention_mask: Tensor::new(attentions, &device)?,
             padding: padding.clone(),
@@ -80,6 +86,7 @@ impl BatchEncoding {
         tracing::debug!("CAT self {:?} | other {:?}", &self, &other_batch);
         self.ids = Tensor::cat(&[&self.ids, &other_batch.ids], 0)?;
         self.attention_mask = Tensor::cat(&[&self.attention_mask, &other_batch.attention_mask], 0)?;
+        self.keys.extend(other_batch.keys);
         Ok(())
     }
 
@@ -110,19 +117,28 @@ impl BatchEncoding {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{ModelType, Tokenizer};
+    use super::super::{ModelType, Prompt, Tokenizer};
 
     #[test]
     fn batch_merge_same_size() {
         let model_type = ModelType::Mistral7bInstructV02;
         let tokenizer = Tokenizer::load(model_type).expect("Error loading tokenizer");
         let mut batch = tokenizer
-            .encode_batch(vec!["last test I swear".to_owned()])
+            .encode_batch(vec![Prompt {
+                id: "1".to_owned(),
+                content: "last test I swear".to_owned(),
+            }])
             .expect("Error encoding batch");
         let input_batch = tokenizer
             .encode_batch(vec![
-                "last test I swear".to_owned(),
-                "last test I swear".to_owned(),
+                Prompt {
+                    id: "1".to_owned(),
+                    content: "last test I swear".to_owned(),
+                },
+                Prompt {
+                    id: "2".to_owned(),
+                    content: "last test I swear".to_owned(),
+                },
             ])
             .expect("Error encoding batch");
         batch.merge_batch(input_batch).expect("");
@@ -133,13 +149,22 @@ mod tests {
         let model_type = ModelType::Mistral7bInstructV02;
         let tokenizer = Tokenizer::load(model_type).expect("Error loading tokenizer");
         let mut batch = tokenizer
-            .encode_batch(vec!["test".to_owned(), "last test I swear".to_owned()])
+            .encode_batch(vec![
+                Prompt {
+                    id: "1".to_owned(),
+                    content: "last test I swear".to_owned(),
+                },
+                Prompt {
+                    id: "2".to_owned(),
+                    content: "last test I swear".to_owned(),
+                },
+            ])
             .expect("Error encoding batch");
         let input_batch = tokenizer.encode_batch(vec![
-            "last test I swear".to_owned(),
-            "last test I swear".to_owned(),
-            "test test test test test test test another another another another another another anotheranother another and another and another".to_owned(),
-        ]).expect("Error encoding batch");
+            Prompt {
+                id: "3".to_owned(),
+                content: "test test test test test test test another another another another another another anotheranother another and another and another".to_owned(),
+            }]).expect("Error encoding batch");
         batch.merge_batch(input_batch).expect("");
     }
 
@@ -147,16 +172,20 @@ mod tests {
     fn batch_merge_smaller() {
         let model_type = ModelType::Mistral7bInstructV02;
         let tokenizer = Tokenizer::load(model_type).expect("Error loading tokenizer");
-        let mut batch = tokenizer.encode_batch(vec![
-            "test".to_owned(),
-            "another test".to_owned(),
-            "last test I swear".to_owned(),
-            "test test test test test test test another another another another another another anotheranother another and another and another".to_owned(),
-        ]).expect("Error encoding batch");
+        let mut batch = tokenizer.encode_batch(vec![Prompt {
+            id: "3".to_owned(),
+            content: "test test test test test test test another another another another another another anotheranother another and another and another".to_owned(),
+        }]).expect("Error encoding batch");
         let input_batch = tokenizer
             .encode_batch(vec![
-                "last test I swear".to_owned(),
-                "another test".to_owned(),
+                Prompt {
+                    id: "1".to_owned(),
+                    content: "last test I swear".to_owned(),
+                },
+                Prompt {
+                    id: "2".to_owned(),
+                    content: "last test I swear".to_owned(),
+                },
             ])
             .expect("Error encoding batch");
         batch.merge_batch(input_batch).expect("");
