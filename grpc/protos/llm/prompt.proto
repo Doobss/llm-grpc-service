@@ -12,7 +12,7 @@ message PromptConfig {
 message PromptRequest {
   string id = 1;
   string content = 2;
-  optional PromptConfig config = 3;
+  PromptConfig config = 3;
 }
 
 // Data about the generation process and the model.
@@ -36,6 +36,6 @@ message PromptReply {
   string id = 1;
   string content = 2;
   bool is_end_of_sequence = 3;
-  optional PromptConfig config = 4;
+  PromptConfig config = 4;
   PromptMetaData meta = 5;
 }

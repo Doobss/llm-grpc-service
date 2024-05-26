@@ -28,6 +28,9 @@ impl TokenizerFiles {
 pub struct Tokenizer {
     inner: tokenizers::Tokenizer,
     padding: tokenizers::PaddingParams,
+    pub pad_id: u32,
+    pub bos_id: u32,
+    pub eos_id: u32,
 }
 
 impl Tokenizer {
@@ -42,8 +45,8 @@ impl Tokenizer {
             Ok(batch) => Ok(batch),
             Err(error) => Err(Error::TokenizerError(error.to_string())),
         };
-        let mut encodings = encodings?;
-        tokenizers::pad_encodings(&mut encodings, &self.padding)?;
+        let encodings = encodings?;
+        // tokenizers::pad_encodings(&mut encodings, &self.padding)?;
         BatchEncoding::from_encodings(keys, encodings, &self.padding)
     }
 
@@ -52,7 +55,7 @@ impl Tokenizer {
         for token_ref in token_ids {
             token_refs.push(token_ref);
         }
-        Ok(self.inner.decode_batch(&token_refs, true)?)
+        Ok(self.inner.decode_batch(&token_refs, false)?)
     }
 
     pub fn get_token(&self, token_s: &str) -> Option<u32> {
@@ -82,10 +85,32 @@ impl Tokenizer {
                 None => "[PAD]".to_owned(),
             },
         };
+        let bos_token = config
+            .get("bos_token")
+            .expect("missing bos_token")
+            .as_str()
+            .map(|slice| slice.to_owned())
+            .expect("bos_token is not a string in the tokenizer config.json");
+        let eos_token = config
+            .get("eos_token")
+            .expect("missing eos_token")
+            .as_str()
+            .map(|slice| slice.to_owned())
+            .expect("eos_token is not a string in the tokenizer config.json");
 
         tracing::debug!("tokenizer config: {:?}", config);
-        let tokenizer = tokenizers::Tokenizer::from_file(files.model)?;
+        let mut tokenizer = tokenizers::Tokenizer::from_file(files.model)?;
         let pad_id = tokenizer.encode(pad_token.clone(), false)?.get_ids()[0];
+        let bos_id = tokenizer.encode(bos_token.clone(), false)?.get_ids()[0];
+        let eos_id = tokenizer.encode(eos_token.clone(), false)?.get_ids()[0];
+        tokenizer.with_padding(Some(PaddingParams {
+            strategy: PaddingStrategy::BatchLongest,
+            direction: PaddingDirection::Left,
+            pad_to_multiple_of: None,
+            pad_id,
+            pad_type_id: pad_id,
+            pad_token: pad_token.clone(),
+        }));
         Ok(Self {
             inner: tokenizer,
             padding: PaddingParams {
@@ -96,6 +121,9 @@ impl Tokenizer {
                 pad_type_id: pad_id,
                 pad_token,
             },
+            pad_id,
+            bos_id,
+            eos_id,
         })
     }
 

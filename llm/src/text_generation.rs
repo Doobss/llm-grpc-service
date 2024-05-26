@@ -8,12 +8,12 @@ pub struct TextGeneration {
 }
 
 impl TextGeneration {
-    pub fn next(&mut self, batch: &BatchEncoding, offset: usize) -> Result<Tensor> {
+    pub fn next(&mut self, batch: &BatchEncoding) -> Result<Tensor> {
         let logits = self
             .model
-            .forward(&batch.ids, &batch.attention_mask, offset)?
+            .forward(&batch.ids, &batch.attention_mask)?
             .squeeze(1)?;
-        tracing::info!("logits: {:?}", &logits);
+        // tracing::info!("logits: {:?}", &logits);
         let next_tokens = self.logits_processor.sample(&logits)?;
         Ok(next_tokens)
     }

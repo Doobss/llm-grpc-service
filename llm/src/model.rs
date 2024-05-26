@@ -45,12 +45,7 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn forward(
-        &mut self,
-        input_tokens: &Tensor,
-        attention_mask: &Tensor,
-        sequence_offset: usize,
-    ) -> Result<Tensor> {
+    pub fn forward(&mut self, input_tokens: &Tensor, attention_mask: &Tensor) -> Result<Tensor> {
         match &mut self.inner {
             InnerModel::Mistral(model) => Ok(model
                 .forward_with_attention(input_tokens, attention_mask, 0)

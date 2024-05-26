@@ -1,5 +1,5 @@
 use crate::Result;
-use candle_core::Tensor;
+use candle_core::{IndexOp, Tensor};
 use candle_transformers::generation;
 
 #[derive()]
@@ -12,10 +12,15 @@ impl LogitsProcessor {
     pub fn sample(&mut self, logits: &Tensor) -> Result<Tensor> {
         match self.sampling {
             generation::Sampling::ArgMax => Ok(logits.argmax_keepdim(1)?),
-            _ => Ok(Tensor::new(
-                vec![self.inner.sample(logits)?],
-                logits.device(),
-            )?),
+            // generation::Sampling::ArgMax => Ok(logits.argmax_keepdim(1)?),
+            _ => {
+                let batch_length = logits.shape().dims()[0];
+                let mut samples = Vec::new();
+                for index in 0..batch_length {
+                    samples.push(vec![self.inner.sample(&logits.i(index)?)?])
+                }
+                Ok(Tensor::new(samples, logits.device())?)
+            }
         }
     }
 }

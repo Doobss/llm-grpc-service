@@ -30,8 +30,16 @@ grpc = { path = './grpc' }
 hf-hub = "0.3.0"
 llm = { path = './llm' }
 tokenizers = { version = "0.19.1" }
+tonic = "0.11.0"
+tonic-build = { version = "0.11.0", features = ["prost"] }
+tonic-health = "0.11.0"
+tonic-reflection = "0.11.0"
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
+tokio-stream = { version = "0.1" }
 tracing = "0.1.37"
 tracing-chrome = "0.7.1"
 tracing-subscriber = { version = "0.3.7", features = ["env-filter"] }
 serde_json = "1.0.99"
 serde = "1.0.203"
+prost-types = { version = "0.12" }
+prost = { version = "*" }
