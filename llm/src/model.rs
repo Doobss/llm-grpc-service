@@ -1,8 +1,8 @@
-use crate::{Error, Result};
+use crate::{models, Error, Result};
 use candle_core::Tensor;
 use candle_examples::hub_load_safetensors;
 use candle_nn::VarBuilder;
-use candle_transformers::models;
+// use candle_transformers::models;
 use clap;
 use hf_hub::{api, api::sync::ApiRepo, Repo, RepoType};
 use std::path::PathBuf;
@@ -34,7 +34,7 @@ impl ModelType {
 #[derive(Debug)]
 enum InnerModel {
     Mistral(models::mistral::Model),
-    QuantizedMistral(models::quantized_mistral::Model),
+    // QuantizedMistral(models::quantized_mistral::Model),
 }
 
 #[derive(Debug)]
@@ -42,6 +42,55 @@ pub struct Model {
     inner: InnerModel,
     device: candle_core::Device,
     dtype: candle_core::DType,
+}
+
+impl Model {
+    pub fn forward(
+        &mut self,
+        input_tokens: &Tensor,
+        attention_mask: &Tensor,
+        sequence_offset: usize,
+    ) -> Result<Tensor> {
+        match &mut self.inner {
+            InnerModel::Mistral(model) => Ok(model
+                .forward_with_attention(input_tokens, attention_mask, 0)
+                .expect("Error in model inner forward.")),
+            // InnerModel::QuantizedMistral(model) => Ok(model
+            //     .forward(input_tokens, sequence_offset)
+            //     .expect("Error in model inner forward.")),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ModelFiles {
+    config: PathBuf,
+    weights: Vec<PathBuf>,
+    quantized_weights: Vec<PathBuf>,
+}
+
+impl ModelFiles {
+    pub fn from_repo(repo: &ApiRepo) -> Result<Self> {
+        let config = repo.get("config.json")?;
+        let weights = hub_load_safetensors(repo, "model.safetensors.index.json")?;
+        let repo_info = repo.info()?;
+        let quantized_weights: Vec<PathBuf> = repo_info
+            .siblings
+            .into_iter()
+            .filter_map(|sibling| {
+                let filename = sibling.rfilename.clone();
+                if filename.ends_with(".gguf") {
+                    return repo.get(&filename).ok();
+                }
+                None
+            })
+            .collect();
+        Ok(Self {
+            config,
+            weights,
+            quantized_weights,
+        })
+    }
 }
 
 impl Model {
@@ -79,7 +128,7 @@ impl Model {
     }
 
     pub fn init_device() -> Result<candle_core::Device> {
-        candle_examples::device(false).map_err(|error| Error::CandleError(error.to_string()))
+        candle_examples::device(false).map_err(Error::CandleError)
     }
 
     pub fn init_dtype() -> Result<candle_core::DType> {
@@ -89,47 +138,5 @@ impl Model {
         } else {
             Ok(candle_core::DType::F32)
         }
-    }
-
-    pub fn forward(&mut self, input_tokens: &Tensor, sequence_offset: usize) -> Result<Tensor> {
-        match &mut self.inner {
-            InnerModel::Mistral(m) => Ok(m
-                .forward(input_tokens, sequence_offset)
-                .expect("Error in model inner forward.")),
-            InnerModel::QuantizedMistral(m) => Ok(m
-                .forward(input_tokens, sequence_offset)
-                .expect("Error in model inner forward.")),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ModelFiles {
-    config: PathBuf,
-    weights: Vec<PathBuf>,
-    quantized_weights: Vec<PathBuf>,
-}
-
-impl ModelFiles {
-    pub fn from_repo(repo: &ApiRepo) -> Result<Self> {
-        let config = repo.get("config.json")?;
-        let weights = hub_load_safetensors(repo, "model.safetensors.index.json")?;
-        let repo_info = repo.info()?;
-        let quantized_weights: Vec<PathBuf> = repo_info
-            .siblings
-            .into_iter()
-            .filter_map(|sibling| {
-                let filename = sibling.rfilename.clone();
-                if filename.ends_with(".gguf") {
-                    return repo.get(&filename).ok();
-                }
-                None
-            })
-            .collect();
-        Ok(Self {
-            config,
-            weights,
-            quantized_weights,
-        })
     }
 }

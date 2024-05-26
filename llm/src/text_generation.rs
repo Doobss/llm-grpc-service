@@ -8,18 +8,23 @@ pub struct TextGeneration {
 }
 
 impl TextGeneration {
+    pub fn next(&mut self, batch: &BatchEncoding, offset: usize) -> Result<Tensor> {
+        let logits = self
+            .model
+            .forward(&batch.ids, &batch.attention_mask, offset)?
+            .squeeze(1)?;
+        tracing::info!("logits: {:?}", &logits);
+        let next_tokens = self.logits_processor.sample(&logits)?;
+        Ok(next_tokens)
+    }
+}
+
+impl TextGeneration {
     pub fn new(model_type: ModelType) -> Result<Self> {
         Ok(Self {
             logits_processor: LogitsProcessor::default(),
             model: Model::load(model_type)?,
             tokenizer: Tokenizer::load(model_type)?,
         })
-    }
-
-    pub fn next(&mut self, batch: &BatchEncoding, offset: usize) -> Result<Tensor> {
-        let logits = self.model.forward(&batch.ids, offset)?.squeeze(1)?;
-        tracing::info!("logits: {:?}", &logits);
-        let next_tokens = self.logits_processor.sample(&logits)?;
-        Ok(next_tokens)
     }
 }

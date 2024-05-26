@@ -58,7 +58,9 @@ impl Tokenizer {
     pub fn get_token(&self, token_s: &str) -> Option<u32> {
         self.inner.get_vocab(true).get(token_s).copied()
     }
+}
 
+impl Tokenizer {
     pub fn from_files(files: TokenizerFiles) -> Result<Self> {
         use tokenizers::{PaddingDirection, PaddingParams, PaddingStrategy};
         tracing::debug!("loading tokenizer config: {:?}", &files.config);

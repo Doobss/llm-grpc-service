@@ -10,7 +10,7 @@ pub type ErrorMessage = String;
 
 #[derive(Debug)]
 pub enum Error {
-    CandleError(ErrorMessage),
+    CandleError(CandleError),
     HfApiError(ErrorMessage),
     StdIoError(ErrorMessage),
     JsonError(ErrorMessage),
@@ -25,7 +25,7 @@ impl core::fmt::Display for Error {
 
 impl From<CandleError> for Error {
     fn from(value: CandleError) -> Self {
-        Self::CandleError(value.to_string())
+        Self::CandleError(value)
     }
 }
 

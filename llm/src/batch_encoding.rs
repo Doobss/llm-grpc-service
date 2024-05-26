@@ -105,7 +105,9 @@ impl BatchEncoding {
         self.keys.extend(other_batch.keys);
         Ok(())
     }
+}
 
+impl BatchEncoding {
     pub fn set_ids(&mut self, new_ids: Tensor) {
         self.ids = new_ids;
     }
