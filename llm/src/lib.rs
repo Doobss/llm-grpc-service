@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate approx;
 
 extern crate candle_core;

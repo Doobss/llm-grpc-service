@@ -1,4 +1,6 @@
 use crate::{BatchEncoding, Error, ModelType, Prompt, Result};
+use candle_core::Tensor;
+use candle_examples::device as get_device;
 use hf_hub::{api, api::sync::ApiRepo, Repo, RepoType};
 use serde_json;
 use std::path::PathBuf;
@@ -33,30 +35,63 @@ pub struct Tokenizer {
 }
 
 impl Tokenizer {
-    pub fn encode_batch(&self, prompts: Vec<Prompt>) -> Result<BatchEncoding> {
+    pub fn encode_batch(
+        &self,
+        prompts: Vec<Prompt>,
+        add_special_tokens: bool,
+    ) -> Result<BatchEncoding> {
         let mut keys = Vec::new();
         let mut inputs = Vec::new();
         for prompt in prompts {
             keys.push(prompt.id);
             inputs.push(prompt.content);
         }
-        let encodings = match self.inner.encode_batch(inputs, true) {
-            Ok(batch) => Ok(batch),
+        let encodings = match self.inner.encode_batch(inputs, add_special_tokens) {
+            Ok(mut batch) => {
+                if self.inner.get_padding().is_none() {
+                    tokenizers::pad_encodings(&mut batch, &self.padding)?;
+                }
+                Ok(batch)
+            }
             Err(error) => Err(Error::TokenizerError(error)),
-        };
-        let mut encodings = encodings?;
-        if self.inner.get_padding().is_none() {
-            tokenizers::pad_encodings(&mut encodings, &self.padding)?;
+        }?;
+
+        let mut ids: Vec<&[u32]> = Vec::new();
+        let mut attentions: Vec<&[u32]> = Vec::new();
+        for encoding in encodings.iter() {
+            ids.push(encoding.get_ids());
+            attentions.push(encoding.get_attention_mask());
         }
-        BatchEncoding::from_encodings(keys, encodings, &self.padding)
+        let device = get_device(false)?;
+        let ids = Tensor::new(ids, &device)?;
+        let attention_mask = Tensor::new(attentions, &device)?;
+        let ignore_mask = Tensor::zeros(
+            attention_mask.shape(),
+            attention_mask.dtype(),
+            attention_mask.device(),
+        )?;
+        let padding_tokens = attention_mask.eq(self.pad_id)?;
+        let attention_mask = padding_tokens.where_cond(&ignore_mask, &attention_mask)?;
+        let test_vec = attention_mask.to_vec2::<u32>()?;
+        tracing::info!("test_vec: {:?}", &test_vec);
+        Ok(BatchEncoding {
+            keys,
+            ids,
+            attention_mask,
+            padding: self.padding.clone(),
+        })
     }
 
-    pub fn batch_decode(&self, token_ids: &Vec<Vec<u32>>) -> Result<Vec<String>> {
+    pub fn batch_decode(
+        &self,
+        token_ids: &Vec<Vec<u32>>,
+        skip_special_tokens: bool,
+    ) -> Result<Vec<String>> {
         let mut token_refs: Vec<&[u32]> = Vec::with_capacity(token_ids.len());
         for token_ref in token_ids {
             token_refs.push(token_ref);
         }
-        Ok(self.inner.decode_batch(&token_refs, false)?)
+        Ok(self.inner.decode_batch(&token_refs, skip_special_tokens)?)
     }
 
     pub fn get_token(&self, token_s: &str) -> Option<u32> {
@@ -120,19 +155,21 @@ impl Tokenizer {
         } else {
             tracing::debug!("Pad token {:?} found in vocab.", &pad_token);
         }
+        let pad_type_id = 0;
         tracing::debug!("tokenizer bos_token: {:?}", &bos_token);
         tracing::debug!("tokenizer bos_id: {:?}", &bos_id);
         tracing::debug!("tokenizer eos_token: {:?}", &eos_token);
         tracing::debug!("tokenizer eos_id: {:?}", &eos_id);
         tracing::debug!("tokenizer pad_token: {:?}", &pad_token);
         tracing::debug!("tokenizer pad_id: {:?}", &pad_id);
+        tracing::debug!("tokenizer pad_type_id: {:?}", &pad_type_id);
 
         tokenizer.with_padding(Some(PaddingParams {
             strategy: PaddingStrategy::BatchLongest,
             direction: PaddingDirection::Left,
             pad_to_multiple_of: None,
             pad_id,
-            pad_type_id: pad_id,
+            pad_type_id,
             pad_token: pad_token.clone(),
         }));
         Ok(Self {
@@ -142,7 +179,7 @@ impl Tokenizer {
                 direction: PaddingDirection::Left,
                 pad_to_multiple_of: None,
                 pad_id,
-                pad_type_id: pad_id,
+                pad_type_id,
                 pad_token,
             },
             pad_id,

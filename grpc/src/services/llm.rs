@@ -120,7 +120,7 @@ impl TextGenerator {
                     output_channels.insert(prompt.request.id.clone(), prompt.prompt_sender);
                     let new_batch = text_generation
                         .tokenizer
-                        .encode_batch(vec![prompt.request.into()])
+                        .encode_batch(vec![prompt.request.into()], true)
                         .expect("Error encoding batch");
                     match batch {
                         Some(ref mut current_batch) => current_batch
@@ -149,7 +149,7 @@ impl TextGenerator {
                         next_batch.ids.to_vec2().expect("Tensor error");
                     let decoded = text_generation
                         .tokenizer
-                        .batch_decode(&next_tokens_vec)
+                        .batch_decode(&next_tokens_vec, false)
                         .expect("Error decoding tokens");
                     for (index, decoded_tokens) in decoded.iter().enumerate() {
                         let is_end_of_sequence = is_end_of_sequence[index] == 1;
@@ -189,7 +189,7 @@ impl TextGenerator {
                     output_channels.insert(prompt.request.id.clone(), prompt.prompt_sender);
                     let new_batch = text_generation
                         .tokenizer
-                        .encode_batch(vec![prompt.request.into()])
+                        .encode_batch(vec![prompt.request.into()], true)
                         .expect("Error encoding batch");
                     batch = Some(new_batch)
                 }
