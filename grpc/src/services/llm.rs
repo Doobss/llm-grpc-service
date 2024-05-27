@@ -109,9 +109,11 @@ impl TextGenerator {
             let mut output_channels = HashMap::new();
             tracing::info!("Model {:?} initialized.", model_type);
             let mut batch: Option<llm::BatchEncoding> = None;
+            let token_chunk_length = 2;
+            let mut current_token = 0;
             loop {
                 if !receiver.is_empty() {
-                    tracing::info!("Picking up model input");
+                    tracing::debug!("Picking up model input");
                     let prompt: PromptGenerationRequest = receiver
                         .blocking_recv()
                         .expect("Input channel to model closed");
@@ -127,7 +129,10 @@ impl TextGenerator {
                         None => batch = Some(new_batch),
                     }
                 } else if let Some(mut next_batch) = batch {
-                    tracing::info!("Generating batch: {:?}", &next_batch);
+                    current_token += 1;
+                    if current_token == token_chunk_length {
+                        tracing::debug!("Generating batch: {:?}", &next_batch);
+                    }
                     let next_tokens = text_generation.next(&next_batch).expect("Error generating");
                     let is_end_of_sequence: Vec<u8> = next_tokens
                         .eq(text_generation.tokenizer.eos_id)
@@ -148,17 +153,19 @@ impl TextGenerator {
                         .expect("Error decoding tokens");
                     for (index, decoded_tokens) in decoded.iter().enumerate() {
                         let is_end_of_sequence = is_end_of_sequence[index] == 1;
-                        let output_channel = output_channels.get(&next_batch.keys[index]);
-                        if let Some(channel) = output_channel {
-                            channel
-                                .blocking_send(PromptReply {
-                                    id: next_batch.keys[index].clone(),
-                                    content: decoded_tokens.to_owned(),
-                                    meta: None,
-                                    config: None,
-                                    is_end_of_sequence,
-                                })
-                                .expect("Error sending PromptReply")
+                        if token_chunk_length == current_token || is_end_of_sequence {
+                            let output_channel = output_channels.get(&next_batch.keys[index]);
+                            if let Some(channel) = output_channel {
+                                channel
+                                    .blocking_send(PromptReply {
+                                        id: next_batch.keys[index].clone(),
+                                        content: decoded_tokens.to_owned(),
+                                        meta: None,
+                                        config: None,
+                                        is_end_of_sequence,
+                                    })
+                                    .expect("Error sending PromptReply")
+                            }
                         }
                         if is_end_of_sequence {
                             output_channels
@@ -166,13 +173,16 @@ impl TextGenerator {
                                 .expect("Error removing channel");
                         }
                     }
+                    if current_token == token_chunk_length {
+                        current_token = 0;
+                    }
                     if output_channels.keys().len() > 0 {
                         batch = Some(next_batch)
                     } else {
                         batch = None
                     }
                 } else {
-                    tracing::info!("Waiting for model input");
+                    tracing::debug!("Waiting for model input");
                     let prompt: PromptGenerationRequest = receiver
                         .blocking_recv()
                         .expect("Input channel to model closed");
