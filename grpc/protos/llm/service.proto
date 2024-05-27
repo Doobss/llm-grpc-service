@@ -11,7 +11,7 @@ message PromptConfig {
 
 // A request for llm streaming generation.
 message PromptRequest {
-  string id = 1;
+  optional string id = 1;
   string content = 2;
   PromptConfig config = 3;
 }

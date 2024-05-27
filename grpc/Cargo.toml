@@ -18,6 +18,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 prost.workspace = true
 thiserror.workspace = true
+uuid.workspace = true
 
 [build-dependencies]
 tonic-build.workspace = true

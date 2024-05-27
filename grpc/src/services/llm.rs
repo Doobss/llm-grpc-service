@@ -53,7 +53,7 @@ impl llm_server::Llm for LlmServer {
 
         let generation_request = PromptGenerationRequest {
             prompt_sender,
-            request: req.into_inner(),
+            request: req.into_inner().into(),
         };
         self.generator
             .input_channel
@@ -73,17 +73,17 @@ pub fn service() -> llm_server::LlmServer<LlmServer> {
     llm_server::LlmServer::new(server)
 }
 
-use llm::{ModelType, TextGeneration};
+use llm::{ModelType, Prompt, TextGeneration};
 
 struct PromptGenerationRequest {
-    pub request: PromptRequest,
+    pub request: Prompt,
     pub prompt_sender: mpsc::Sender<PromptReply>,
 }
 
 impl From<PromptRequest> for llm::Prompt {
     fn from(value: PromptRequest) -> Self {
         Self {
-            id: value.id,
+            id: value.id.unwrap_or(llm::Prompt::gen_id()),
             content: value.content,
         }
     }
@@ -92,7 +92,7 @@ impl From<PromptRequest> for llm::Prompt {
 impl From<llm::Prompt> for PromptRequest {
     fn from(value: llm::Prompt) -> Self {
         Self {
-            id: value.id,
+            id: Some(value.id),
             content: value.content,
             config: None,
         }
@@ -125,7 +125,7 @@ impl TextGenerator {
                     output_channels.insert(prompt.request.id.clone(), prompt.prompt_sender);
                     let new_batch = text_generation
                         .tokenizer
-                        .encode_batch(vec![prompt.request.into()], true)
+                        .encode_batch(vec![prompt.request], true)
                         .expect("Error encoding batch");
                     match batch {
                         Some(ref mut current_batch) => current_batch
@@ -209,7 +209,7 @@ impl TextGenerator {
                     output_channels.insert(prompt.request.id.clone(), prompt.prompt_sender);
                     let new_batch = text_generation
                         .tokenizer
-                        .encode_batch(vec![prompt.request.into()], true)
+                        .encode_batch(vec![prompt.request], true)
                         .expect("Error encoding batch");
                     batch = Some(new_batch)
                 }

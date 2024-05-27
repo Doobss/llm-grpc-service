@@ -46,3 +46,8 @@ prost-types = { version = "0.12" }
 prost = { version = "*" }
 thiserror = "1.0.61"
 rand = "*"
+uuid = { version = "1.8.0", features = [
+    "v4",                # Lets you generate random UUIDs
+    "fast-rng",          # Use a faster (but still sufficiently random) RNG
+    "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
+] }

@@ -17,6 +17,7 @@ extern crate serde_json;
 extern crate tokenizers;
 extern crate tracing;
 extern crate tracing_subscriber;
+extern crate uuid;
 
 mod batch_encoding;
 mod config;

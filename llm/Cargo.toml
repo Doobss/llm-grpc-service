@@ -20,6 +20,7 @@ tracing-subscriber.workspace = true
 serde_json.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+uuid.workspace = true
 
 # [dev-dependencies]
 approx.workspace = true
