@@ -23,6 +23,7 @@ impl BatchEncoding {
             ids.push(encoding.get_ids());
             attentions.push(encoding.get_attention_mask());
         }
+
         let device = get_device(false)?;
         Ok(Self {
             keys,

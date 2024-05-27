@@ -44,8 +44,10 @@ impl Tokenizer {
             Ok(batch) => Ok(batch),
             Err(error) => Err(Error::TokenizerError(error)),
         };
-        let encodings = encodings?;
-        // tokenizers::pad_encodings(&mut encodings, &self.padding)?;
+        let mut encodings = encodings?;
+        if self.inner.get_padding().is_none() {
+            tokenizers::pad_encodings(&mut encodings, &self.padding)?;
+        }
         BatchEncoding::from_encodings(keys, encodings, &self.padding)
     }
 
@@ -76,11 +78,11 @@ impl Tokenizer {
                 .as_str()
                 .map(|slice| slice.to_owned())
                 .expect("pad_token is not a string in the tokenizer config.json"),
-            None => match config.get("bos_token") {
+            None => match config.get("eos_token") {
                 Some(value) => value
                     .as_str()
                     .map(|slice| slice.to_owned())
-                    .expect("bos_token is not a string in the tokenizer config.json"),
+                    .expect("eos_token is not a string in the tokenizer config.json"),
                 None => "[PAD]".to_owned(),
             },
         };
@@ -102,6 +104,29 @@ impl Tokenizer {
         let pad_id = tokenizer.encode(pad_token.clone(), false)?.get_ids()[0];
         let bos_id = tokenizer.encode(bos_token.clone(), false)?.get_ids()[0];
         let eos_id = tokenizer.encode(eos_token.clone(), false)?.get_ids()[0];
+        if tokenizer.get_vocab(true).get(&pad_token).is_none() {
+            tracing::debug!(
+                "Pad token {:?} not found in vocab, adding token.",
+                &pad_token
+            );
+            tokenizer.add_special_tokens(&[tokenizers::AddedToken {
+                content: pad_token.clone(),
+                single_word: true,
+                lstrip: false,
+                rstrip: false,
+                normalized: false,
+                special: true,
+            }]);
+        } else {
+            tracing::debug!("Pad token {:?} found in vocab.", &pad_token);
+        }
+        tracing::debug!("tokenizer bos_token: {:?}", &bos_token);
+        tracing::debug!("tokenizer bos_id: {:?}", &bos_id);
+        tracing::debug!("tokenizer eos_token: {:?}", &eos_token);
+        tracing::debug!("tokenizer eos_id: {:?}", &eos_id);
+        tracing::debug!("tokenizer pad_token: {:?}", &pad_token);
+        tracing::debug!("tokenizer pad_id: {:?}", &pad_id);
+
         tokenizer.with_padding(Some(PaddingParams {
             strategy: PaddingStrategy::BatchLongest,
             direction: PaddingDirection::Left,

@@ -15,6 +15,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .serve("[::]:50051".to_socket_addrs().unwrap().next().unwrap())
         .await
         .unwrap();
-
     Ok(())
 }
