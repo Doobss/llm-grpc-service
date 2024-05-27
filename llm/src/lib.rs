@@ -1,9 +1,13 @@
+#[macro_use]
+extern crate approx;
+
 extern crate candle_core;
 extern crate candle_examples;
 extern crate candle_nn;
 extern crate candle_transformers;
 extern crate clap;
 extern crate hf_hub;
+extern crate rand;
 extern crate serde;
 extern crate serde_json;
 extern crate tokenizers;

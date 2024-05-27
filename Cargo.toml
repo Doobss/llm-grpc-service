@@ -13,6 +13,7 @@ documentation = ""
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace.dependencies]
+approx = "*"
 candle-core = { git = "https://github.com/huggingface/candle.git", version = "0.5.1", features = [
     "cuda",
 ] }
@@ -44,3 +45,4 @@ serde = "1.0.203"
 prost-types = { version = "0.12" }
 prost = { version = "*" }
 thiserror = "1.0.61"
+rand = "*"

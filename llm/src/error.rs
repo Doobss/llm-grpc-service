@@ -6,8 +6,6 @@ use tokenizers::Error as TokenizerError;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-pub type ErrorMessage = String;
-
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
