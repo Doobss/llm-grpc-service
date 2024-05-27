@@ -31,6 +31,7 @@ impl llm_server::Llm for LlmServer {
         );
         let (prompt_sender, mut prompt_receiver) = mpsc::channel(128);
         let (sender, receiver) = mpsc::channel(128);
+        let start_generation = std::time::Instant::now();
         tokio::spawn(async move {
             while let Some(item) = prompt_receiver.recv().await {
                 match sender.send(Result::<_, Status>::Ok(item)).await {
@@ -43,7 +44,11 @@ impl llm_server::Llm for LlmServer {
                     }
                 }
             }
-            tracing::info!("\tclient disconnected");
+            let generation_duration = start_generation.elapsed();
+            tracing::info!(
+                "client disconnected generation_duration: {:?} ms",
+                generation_duration.as_millis()
+            );
         });
 
         let generation_request = PromptGenerationRequest {
@@ -133,7 +138,11 @@ impl TextGenerator {
                     if current_token == token_chunk_length {
                         tracing::debug!("Generating batch: {:?}", &next_batch);
                     }
+                    let start_generation = std::time::Instant::now();
                     let next_tokens = text_generation.next(&next_batch).expect("Error generating");
+                    let generation_duration = start_generation.elapsed();
+
+                    let start_token_decode = std::time::Instant::now();
                     let is_end_of_sequence: Vec<u8> = next_tokens
                         .eq(text_generation.tokenizer.eos_id)
                         .expect("Tensor error")
@@ -149,8 +158,11 @@ impl TextGenerator {
                         next_batch.ids.to_vec2().expect("Tensor error");
                     let decoded = text_generation
                         .tokenizer
-                        .batch_decode(&next_tokens_vec, false)
+                        .batch_decode(&next_tokens_vec, true)
                         .expect("Error decoding tokens");
+                    let decoding_duration = start_token_decode.elapsed();
+
+                    let start_sending_results = std::time::Instant::now();
                     for (index, decoded_tokens) in decoded.iter().enumerate() {
                         let is_end_of_sequence = is_end_of_sequence[index] == 1;
                         if token_chunk_length == current_token || is_end_of_sequence {
@@ -173,6 +185,14 @@ impl TextGenerator {
                                 .expect("Error removing channel");
                         }
                     }
+                    let sending_results_duration = start_sending_results.elapsed();
+                    tracing::info!(
+                        "generation_duration: {:?} ms | decoding_duration: {:?} ms | sending_results_duration: {:?} ms",
+                        generation_duration.as_millis(),
+                        decoding_duration.as_millis(),
+                        sending_results_duration.as_millis()
+                    );
+
                     if current_token == token_chunk_length {
                         current_token = 0;
                     }

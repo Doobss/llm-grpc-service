@@ -1,90 +1,10 @@
-/// Mistral LLM, https://github.com/mistralai/mistral-src
-/// copied to add forward_with_attention method on the model
 use candle_core::{DType, Device, Module, Result, Tensor, D};
-use candle_nn::{Activation, VarBuilder};
-use candle_transformers::models::{
-    // stable_diffusion::attention,
-    with_tracing::{linear_no_bias, Linear, RmsNorm},
-};
+use candle_nn::Activation;
+use candle_transformers::quantized_nn::{linear_no_bias, Embedding, Linear, RmsNorm};
+pub use candle_transformers::quantized_var_builder::VarBuilder;
 use std::sync::Arc;
 
-fn default_use_flash_attn() -> bool {
-    false
-}
-
-#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
-pub struct Config {
-    pub vocab_size: usize,
-    pub hidden_size: usize,
-    pub intermediate_size: usize,
-    pub num_hidden_layers: usize,
-    pub num_attention_heads: usize,
-    pub num_key_value_heads: usize,
-    pub hidden_act: Activation,
-    pub max_position_embeddings: usize,
-    pub rms_norm_eps: f64,
-    pub rope_theta: f64,
-    pub sliding_window: Option<usize>,
-    #[serde(default = "default_use_flash_attn")]
-    pub use_flash_attn: bool,
-}
-
-impl Config {
-    // https://huggingface.co/mistralai/Mistral-7B-v0.1/blob/main/config.json
-    pub fn config_7b_v0_1(use_flash_attn: bool) -> Self {
-        Self {
-            vocab_size: 32000,
-            hidden_size: 4096,
-            intermediate_size: 14336,
-            num_hidden_layers: 32,
-            num_attention_heads: 32,
-            num_key_value_heads: 8,
-            hidden_act: Activation::Silu,
-            max_position_embeddings: 32768,
-            rms_norm_eps: 1e-5,
-            rope_theta: 10_000.,
-            sliding_window: Some(4096),
-            use_flash_attn,
-        }
-    }
-
-    // https://huggingface.co/Open-Orca/Mistral-7B-OpenOrca/blob/main/config.json
-    // https://huggingface.co/teknium/OpenHermes-2.5-Mistral-7B/blob/main/config.json
-    pub fn config_chat_ml(use_flash_attn: bool) -> Self {
-        Self {
-            vocab_size: 32002,
-            hidden_size: 4096,
-            intermediate_size: 14336,
-            num_hidden_layers: 32,
-            num_attention_heads: 32,
-            num_key_value_heads: 8,
-            hidden_act: Activation::Silu,
-            max_position_embeddings: 32768,
-            rms_norm_eps: 1e-5,
-            rope_theta: 10_000.,
-            sliding_window: Some(4096),
-            use_flash_attn,
-        }
-    }
-
-    // https://huggingface.co/amazon/MistralLite/blob/main/config.json
-    pub fn config_amazon_mistral_lite(use_flash_attn: bool) -> Self {
-        Self {
-            vocab_size: 32003,
-            hidden_size: 4096,
-            intermediate_size: 14336,
-            num_hidden_layers: 32,
-            num_attention_heads: 32,
-            num_key_value_heads: 8,
-            hidden_act: Activation::Silu,
-            max_position_embeddings: 32768,
-            rms_norm_eps: 1e-5,
-            rope_theta: 10_000.,
-            sliding_window: Some(4096),
-            use_flash_attn,
-        }
-    }
-}
+pub use candle_transformers::models::mistral::Config;
 
 #[derive(Debug, Clone)]
 struct RotaryEmbedding {
@@ -93,7 +13,7 @@ struct RotaryEmbedding {
 }
 
 impl RotaryEmbedding {
-    fn new(dtype: DType, cfg: &Config, dev: &Device) -> Result<Self> {
+    fn new(cfg: &Config, dev: &Device) -> Result<Self> {
         let rope_theta = cfg.rope_theta as f32;
         let dim = cfg.hidden_size / cfg.num_attention_heads;
         let max_seq_len = cfg.max_position_embeddings;
@@ -102,9 +22,9 @@ impl RotaryEmbedding {
             .map(|i| 1f32 / rope_theta.powf(i as f32 / dim as f32))
             .collect();
         let inv_freq_len = inv_freq.len();
-        let inv_freq = Tensor::from_vec(inv_freq, (1, inv_freq_len), dev)?.to_dtype(dtype)?;
+        let inv_freq = Tensor::from_vec(inv_freq, (1, inv_freq_len), dev)?;
         let t = Tensor::arange(0u32, max_seq_len as u32, dev)?
-            .to_dtype(dtype)?
+            .to_dtype(DType::F32)?
             .reshape((max_seq_len, 1))?;
         let freqs = t.matmul(&inv_freq)?;
         Ok(Self {
@@ -161,22 +81,6 @@ impl Module for MLP {
     }
 }
 
-#[cfg(feature = "flash-attn")]
-fn flash_attn(
-    q: &Tensor,
-    k: &Tensor,
-    v: &Tensor,
-    softmax_scale: f32,
-    causal: bool,
-) -> Result<Tensor> {
-    candle_flash_attn::flash_attn(q, k, v, softmax_scale, causal)
-}
-
-#[cfg(not(feature = "flash-attn"))]
-fn flash_attn(_: &Tensor, _: &Tensor, _: &Tensor, _: f32, _: bool) -> Result<Tensor> {
-    unimplemented!("compile with '--features flash-attn'")
-}
-
 #[derive(Debug, Clone)]
 struct Attention {
     q_proj: Linear,
@@ -190,7 +94,6 @@ struct Attention {
     hidden_size: usize,
     rotary_emb: Arc<RotaryEmbedding>,
     kv_cache: Option<(Tensor, Tensor)>,
-    use_flash_attn: bool,
 }
 
 impl Attention {
@@ -216,7 +119,6 @@ impl Attention {
             hidden_size: hidden_sz,
             rotary_emb,
             kv_cache: None,
-            use_flash_attn: cfg.use_flash_attn,
         })
     }
 
@@ -268,14 +170,7 @@ impl Attention {
         let key_states = candle_transformers::utils::repeat_kv(key_states, self.num_kv_groups)?;
         let value_states = candle_transformers::utils::repeat_kv(value_states, self.num_kv_groups)?;
 
-        let attn_output = if self.use_flash_attn {
-            // flash-attn expects (b_sz, seq_len, nheads, head_dim)
-            let q = query_states.transpose(1, 2)?;
-            let k = key_states.transpose(1, 2)?;
-            let v = value_states.transpose(1, 2)?;
-            let softmax_scale = 1f32 / (self.head_dim as f32).sqrt();
-            flash_attn(&q, &k, &v, softmax_scale, q_len > 1)?.transpose(1, 2)?
-        } else {
+        let attn_output = {
             let scale = 1f64 / f64::sqrt(self.head_dim as f64);
             let attn_weights = (query_states.matmul(&key_states.transpose(2, 3)?)? * scale)?;
 
@@ -349,21 +244,20 @@ impl DecoderLayer {
 
 #[derive(Debug, Clone)]
 pub struct Model {
-    embed_tokens: candle_nn::Embedding,
+    embed_tokens: Embedding,
     layers: Vec<DecoderLayer>,
     norm: RmsNorm,
     lm_head: Linear,
     sliding_window: Option<usize>,
     device: Device,
-    dtype: DType,
 }
 
 impl Model {
     pub fn new(cfg: &Config, vb: VarBuilder) -> Result<Self> {
         let vb_m = vb.pp("model");
         let embed_tokens =
-            candle_nn::embedding(cfg.vocab_size, cfg.hidden_size, vb_m.pp("embed_tokens"))?;
-        let rotary_emb = Arc::new(RotaryEmbedding::new(vb.dtype(), cfg, vb_m.device())?);
+            Embedding::new(cfg.vocab_size, cfg.hidden_size, vb_m.pp("embed_tokens"))?;
+        let rotary_emb = Arc::new(RotaryEmbedding::new(cfg, vb_m.device())?);
         let mut layers = Vec::with_capacity(cfg.num_hidden_layers);
         let vb_l = vb_m.pp("layers");
         for layer_idx in 0..cfg.num_hidden_layers {
@@ -379,7 +273,6 @@ impl Model {
             lm_head,
             sliding_window: cfg.sliding_window,
             device: vb.device().clone(),
-            dtype: vb.dtype(),
         })
     }
 
@@ -408,7 +301,7 @@ impl Model {
             mask
         };
         mask.expand((1, 1, tgt_len, tgt_len + seqlen_offset))?
-            .to_dtype(self.dtype)
+            .to_dtype(DType::F32)
     }
 
     pub fn forward(&mut self, input_ids: &Tensor, seqlen_offset: usize) -> Result<Tensor> {
@@ -424,6 +317,7 @@ impl Model {
             xs = layer.forward(&xs, attention_mask.as_ref(), seqlen_offset, Some(true))?
         }
         xs.narrow(1, seq_len - 1, 1)?
+            .contiguous()?
             .apply(&self.norm)?
             .apply(&self.lm_head)
     }

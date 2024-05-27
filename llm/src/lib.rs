@@ -1,5 +1,10 @@
-extern crate approx;
+#[cfg(feature = "mkl")]
+extern crate intel_mkl_src;
 
+#[cfg(feature = "accelerate")]
+extern crate accelerate_src;
+
+extern crate approx;
 extern crate candle_core;
 extern crate candle_examples;
 extern crate candle_nn;

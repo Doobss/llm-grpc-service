@@ -16,7 +16,6 @@ impl BatchEncoding {
     }
 
     pub fn append_tokens(&mut self, next_tokens: &Tensor) -> Result<()> {
-        tracing::info!("next_tokens: {:?}", &next_tokens);
         self.attention_mask = Tensor::cat(
             &[
                 &self.attention_mask,
