@@ -13,9 +13,10 @@ pub struct LlmServer {
 }
 
 impl LlmServer {
-    pub fn new(model_type: ModelType) -> crate::Result<Self> {
+    pub fn new(model_type: ModelType, sampling: llm::Sampling) -> crate::Result<Self> {
         Ok(Self {
-            generator: TextGenerator::new(model_type).expect("Error initializing text generation"),
+            generator: TextGenerator::new(model_type, sampling)
+                .expect("Error initializing text generation"),
         })
     }
 }
@@ -35,9 +36,7 @@ impl llm_server::Llm for LlmServer {
         tokio::spawn(async move {
             while let Some(item) = prompt_receiver.recv().await {
                 match sender.send(Result::<_, Status>::Ok(item)).await {
-                    Ok(_) => {
-                        // item (server response) was queued to be send to client
-                    }
+                    Ok(_) => (),
                     Err(_item) => {
                         // output_stream was build from receiver and both are dropped
                         break;
@@ -66,10 +65,9 @@ impl llm_server::Llm for LlmServer {
     }
 }
 
-pub fn service() -> llm_server::LlmServer<LlmServer> {
+pub fn service(model_type: ModelType, sampling: llm::Sampling) -> llm_server::LlmServer<LlmServer> {
     tracing::info!("Adding llm service");
-    let server =
-        LlmServer::new(ModelType::Mistral7bInstructV02).expect("Error loading llm service");
+    let server = LlmServer::new(model_type, sampling).expect("Error loading llm service");
     llm_server::LlmServer::new(server)
 }
 
@@ -105,12 +103,12 @@ struct TextGenerator {
 }
 
 impl TextGenerator {
-    pub fn new(model_type: ModelType) -> crate::Result<Self> {
+    pub fn new(model_type: ModelType, sampling: llm::Sampling) -> crate::Result<Self> {
         let (input_channel, mut receiver) = mpsc::channel(128);
 
         tokio::task::spawn_blocking(move || {
             let mut text_generation =
-                TextGeneration::new(model_type).expect("loading text generator");
+                TextGeneration::new(model_type, Some(sampling)).expect("loading text generator");
             let mut output_channels = HashMap::new();
             tracing::info!("Model {:?} initialized.", model_type);
             let mut batch: Option<llm::BatchEncoding> = None;
@@ -119,13 +117,17 @@ impl TextGenerator {
             loop {
                 if !receiver.is_empty() {
                     tracing::debug!("Picking up model input");
-                    let prompt: PromptGenerationRequest = receiver
-                        .blocking_recv()
-                        .expect("Input channel to model closed");
-                    output_channels.insert(prompt.request.id.clone(), prompt.prompt_sender);
+                    let mut prompts = Vec::new();
+                    while !receiver.is_empty() {
+                        let prompt: PromptGenerationRequest = receiver
+                            .blocking_recv()
+                            .expect("Input channel to model closed");
+                        output_channels.insert(prompt.request.id.clone(), prompt.prompt_sender);
+                        prompts.push(prompt.request)
+                    }
                     let new_batch = text_generation
                         .tokenizer
-                        .encode_batch(vec![prompt.request], true)
+                        .encode_batch(prompts, true)
                         .expect("Error encoding batch");
                     match batch {
                         Some(ref mut current_batch) => current_batch
@@ -143,22 +145,17 @@ impl TextGenerator {
                     let generation_duration = start_generation.elapsed();
 
                     let start_token_decode = std::time::Instant::now();
-                    let is_end_of_sequence: Vec<u8> = next_tokens
-                        .eq(text_generation.tokenizer.eos_id)
-                        .expect("Tensor error")
-                        .squeeze(1)
-                        .expect("Tensor error")
-                        .to_vec1()
-                        .expect("Tensor error");
+                    let is_end_of_sequence =
+                        llm::get_eos_tokens(&next_tokens, text_generation.tokenizer.eos_id)
+                            .expect("Error getting eos tokens");
+
                     next_batch
                         .append_tokens(&next_tokens)
                         .expect("Error appending tokens");
 
-                    let next_tokens_vec: Vec<Vec<u32>> =
-                        next_batch.ids.to_vec2().expect("Tensor error");
                     let decoded = text_generation
                         .tokenizer
-                        .batch_decode(&next_tokens_vec, true)
+                        .decode_batch(&next_batch)
                         .expect("Error decoding tokens");
                     let decoding_duration = start_token_decode.elapsed();
 

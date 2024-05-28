@@ -20,9 +20,13 @@ impl TextGeneration {
 }
 
 impl TextGeneration {
-    pub fn new(model_type: ModelType) -> Result<Self> {
+    pub fn new(model_type: ModelType, sampling: Option<crate::Sampling>) -> Result<Self> {
+        let logits_processor = match sampling {
+            Some(sampling) => LogitsProcessor::from_sampling(100, sampling),
+            None => LogitsProcessor::default(),
+        };
         Ok(Self {
-            logits_processor: LogitsProcessor::default(),
+            logits_processor,
             model: Model::load(model_type)?,
             tokenizer: Tokenizer::load(model_type)?,
         })

@@ -70,7 +70,12 @@ impl LogitsProcessor {
 }
 
 impl LogitsProcessor {
-    fn from_sampling(seed: u64, sampling: Sampling) -> Self {
+    pub fn from_sampling(seed: u64, sampling: Sampling) -> Self {
+        tracing::info!(
+            "Creating logits processor with {:?} sampling and a seed value {}",
+            &sampling,
+            &seed
+        );
         let inner = generation::LogitsProcessor::from_sampling(seed, sampling.clone());
         Self {
             inner,

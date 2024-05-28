@@ -94,6 +94,11 @@ impl Tokenizer {
         Ok(self.inner.decode_batch(&token_refs, skip_special_tokens)?)
     }
 
+    pub fn decode_batch(&self, batch: &BatchEncoding) -> Result<Vec<String>> {
+        let next_tokens_vec: Vec<Vec<u32>> = batch.ids.to_vec2()?;
+        self.batch_decode(&next_tokens_vec, true)
+    }
+
     pub fn get_token(&self, token_s: &str) -> Option<u32> {
         self.inner.get_vocab(true).get(token_s).copied()
     }

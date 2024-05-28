@@ -28,8 +28,10 @@ mod models;
 mod prompt;
 mod text_generation;
 mod tokenizer;
+mod utils;
 
 pub use batch_encoding::BatchEncoding;
+pub use candle_transformers::generation::Sampling;
 pub use config::Config;
 pub use error::{Error, Result};
 pub use logits_processor::LogitsProcessor;
@@ -37,3 +39,4 @@ pub use model::{Model, ModelType};
 pub use prompt::Prompt;
 pub use text_generation::TextGeneration;
 pub use tokenizer::Tokenizer;
+pub use utils::*;
