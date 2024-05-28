@@ -1,29 +1,9 @@
-use crate::{BatchEncoding, Error, ModelType, Prompt, Result};
+use crate::{BatchEncoding, Error, ModelType, Prompt, Result, TokenizerFiles};
 use candle_core::Tensor;
 use candle_examples::device as get_device;
 use hf_hub::{api, api::sync::ApiRepo, Repo, RepoType};
 use serde_json;
-use std::path::PathBuf;
-
-#[derive(Debug, Clone)]
-pub struct TokenizerFiles {
-    model: PathBuf,
-    config: PathBuf,
-    special_tokens: Option<PathBuf>,
-}
-
-impl TokenizerFiles {
-    pub fn from_repo(repo: &ApiRepo) -> Result<Self> {
-        let model = repo.get("tokenizer.json")?;
-        let config = repo.get("tokenizer_config.json")?;
-        let special_tokens = repo.get("special_tokens_map.json").ok();
-        Ok(Self {
-            model,
-            config,
-            special_tokens,
-        })
-    }
-}
+use tokenizers::{PaddingDirection, PaddingParams, PaddingStrategy};
 
 #[derive(Debug)]
 pub struct Tokenizer {
@@ -110,40 +90,44 @@ impl Tokenizer {
 
 impl Tokenizer {
     pub fn from_files(files: TokenizerFiles) -> Result<Self> {
-        use tokenizers::{PaddingDirection, PaddingParams, PaddingStrategy};
         tracing::debug!("loading tokenizer config: {:?}", &files.config);
-        let config: serde_json::Value = match files.special_tokens {
-            Some(path) => serde_json::from_slice(&std::fs::read(path)?)?,
-            None => serde_json::from_slice(&std::fs::read(files.config)?)?,
+
+        let mut config = files.load_config::<serde_json::Value>()?;
+        let special_tokens = match files.load_special_tokens::<serde_json::Value>()? {
+            Some(value) => value,
+            None => config.clone(),
         };
 
-        let pad_token: String = match config.get("pad_token") {
+        tracing::debug!("tokenizer config: {:?}", &config);
+        tracing::debug!("tokenizer special_tokens: {:?}", &special_tokens);
+
+        let pad_token: String = match special_tokens.get("pad_token") {
             Some(value) => value
                 .as_str()
                 .map(|slice| slice.to_owned())
-                .expect("pad_token is not a string in the tokenizer config.json"),
-            None => match config.get("eos_token") {
+                .expect("pad_token is not a string in the tokenizer special_tokens.json"),
+            None => match special_tokens.get("eos_token") {
                 Some(value) => value
                     .as_str()
                     .map(|slice| slice.to_owned())
-                    .expect("eos_token is not a string in the tokenizer config.json"),
+                    .expect("eos_token is not a string in the tokenizer special_tokens.json"),
                 None => "[PAD]".to_owned(),
             },
         };
-        let bos_token = config
+
+        let bos_token = special_tokens
             .get("bos_token")
             .expect("missing bos_token")
             .as_str()
             .map(|slice| slice.to_owned())
             .expect("bos_token is not a string in the tokenizer config.json");
-        let eos_token = config
+        let eos_token = special_tokens
             .get("eos_token")
             .expect("missing eos_token")
             .as_str()
             .map(|slice| slice.to_owned())
             .expect("eos_token is not a string in the tokenizer config.json");
 
-        tracing::debug!("tokenizer config: {:?}", config);
         let mut tokenizer = tokenizers::Tokenizer::from_file(files.model)?;
         let pad_id = tokenizer.encode(pad_token.clone(), false)?.get_ids()[0];
         let bos_id = tokenizer.encode(bos_token.clone(), false)?.get_ids()[0];

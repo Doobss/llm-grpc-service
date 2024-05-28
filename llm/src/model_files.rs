@@ -1,6 +1,5 @@
-use crate::{ModelType, Result};
+use crate::{utils, ModelType, Result};
 use candle_examples::hub_load_safetensors;
-use candle_nn::VarBuilder;
 use hf_hub::api::sync::ApiRepo;
 use std::path::PathBuf;
 
@@ -56,9 +55,7 @@ impl ModelFiles {
     where
         T: for<'a> serde::Deserialize<'a>,
     {
-        let file_data = std::fs::read(file_path)?;
-        let value: T = serde_json::from_slice(&file_data)?;
-        Ok(value)
+        utils::load_file::<T>(file_path)
     }
 
     pub fn load_config<T>(&self) -> Result<T>

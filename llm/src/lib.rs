@@ -29,6 +29,7 @@ mod models;
 mod prompt;
 mod text_generation;
 mod tokenizer;
+mod tokenizer_files;
 mod utils;
 
 pub use batch_encoding::BatchEncoding;
@@ -41,4 +42,5 @@ pub use model_files::ModelFiles;
 pub use prompt::Prompt;
 pub use text_generation::TextGeneration;
 pub use tokenizer::Tokenizer;
+pub use tokenizer_files::TokenizerFiles;
 pub use utils::*;
