@@ -1,3 +1,4 @@
+extern crate clap;
 extern crate llm;
 extern crate thiserror;
 extern crate tonic;

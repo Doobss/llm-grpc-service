@@ -1,13 +1,9 @@
-use crate::{models, Error, Result};
+use crate::{models, Error, ModelFiles, Result};
 use candle_core::Tensor;
-use candle_examples::hub_load_safetensors;
 use candle_nn::VarBuilder;
 use candle_transformers;
 use clap;
 use hf_hub::{api, api::sync::ApiRepo, Repo, RepoType};
-use std::path::PathBuf;
-
-// use tokenizers::parallelism::MaybeParallelRefIterator;
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum ModelType {
@@ -27,7 +23,6 @@ impl ModelType {
             ModelType::Mistral7bV01 => "mistralai/Mistral-7B-v0.1".to_string(),
             ModelType::QuantizedMistral7bV01 => "mistralai/Mistral-7B-v0.1".to_string(),
             ModelType::Mistral7bV02 => "mistralai/Mistral-7B-v0.2".to_string(),
-            // ModelType::Mistral7bInstructV01 => "mistralai/Mistral-7B-Instruct-v0.1".to_string(),
             ModelType::Mistral7bInstructV02 => "mistralai/Mistral-7B-Instruct-v0.2".to_string(),
         }
     }
@@ -63,49 +58,6 @@ impl Model {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct ModelFiles {
-    model_type: ModelType,
-    config: PathBuf,
-    weights: Vec<PathBuf>,
-    quantized_weights: Vec<PathBuf>,
-}
-
-impl ModelFiles {
-    pub fn from_repo(model_type: ModelType, repo: &ApiRepo) -> Result<Self> {
-        let config = repo.get("config.json")?;
-        let mut weights = Vec::new();
-        let mut quantized_weights = Vec::new();
-        let repo_info = repo.info()?;
-        if model_type.is_quantized() {
-            quantized_weights = repo_info
-                .siblings
-                .into_iter()
-                .filter_map(|sibling| {
-                    let filename = sibling.rfilename.clone();
-                    tracing::info!("sibling filename: {:?}", &filename);
-                    if filename.ends_with(".gguf") {
-                        return repo.get(&filename).ok();
-                    }
-                    None
-                })
-                .collect();
-            if quantized_weights.is_empty() {
-                tracing::info!("attempting to get model-q4k.gguf");
-                quantized_weights = vec![repo.get("model-q4k.gguf")?]
-            }
-        } else {
-            weights = hub_load_safetensors(repo, "model.safetensors.index.json")?;
-        }
-        Ok(Self {
-            model_type,
-            config,
-            weights,
-            quantized_weights,
-        })
-    }
-}
-
 impl Model {
     pub fn load(model_type: ModelType) -> Result<Self> {
         let api = api::sync::ApiBuilder::new()
@@ -127,7 +79,9 @@ impl Model {
         let dtype = Model::init_dtype()?;
         let inner = match files.model_type {
             ModelType::QuantizedMistral7bV01 => {
-                let config = serde_json::from_slice(&std::fs::read(files.config)?)?;
+                let config = files.load_config()?;
+                // let generation_config = files.load_generation_config();
+                tracing::debug!("Model config: {:?}", &config);
                 let gguf_file = files
                     .quantized_weights
                     .first()
@@ -139,7 +93,8 @@ impl Model {
                 InnerModel::QuantizedMistral(model)
             }
             _ => {
-                let config = serde_json::from_slice(&std::fs::read(files.config)?)?;
+                let config = files.load_config()?;
+                tracing::debug!("Model config: {:?}", &config);
                 let vars =
                     unsafe { VarBuilder::from_mmaped_safetensors(&files.weights, dtype, &device)? };
                 let model = models::mistral::Model::new(&config, vars)?;

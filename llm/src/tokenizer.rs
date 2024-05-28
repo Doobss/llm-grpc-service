@@ -64,16 +64,20 @@ impl Tokenizer {
         }
         let device = get_device(false)?;
         let ids = Tensor::new(ids, &device)?;
-        let attention_mask = Tensor::new(attentions, &device)?;
-        let ignore_mask = Tensor::zeros(
+        let attention_mask = Tensor::new(attentions, &device)?.to_dtype(candle_core::DType::F32)?;
+        let ignore_mask = Tensor::full(
+            f32::NEG_INFINITY,
             attention_mask.shape(),
+            attention_mask.device(),
+        )?
+        .to_dtype(candle_core::DType::F32)?;
+        let padding_tokens = attention_mask.eq(0_f32)?;
+        let attention_mask = attention_mask.broadcast_sub(&Tensor::ones(
+            1,
             attention_mask.dtype(),
             attention_mask.device(),
-        )?;
-        let padding_tokens = attention_mask.eq(self.pad_id)?;
+        )?)?;
         let attention_mask = padding_tokens.where_cond(&ignore_mask, &attention_mask)?;
-        let test_vec = attention_mask.to_vec2::<u32>()?;
-        tracing::info!("test_vec: {:?}", &test_vec);
         Ok(BatchEncoding {
             keys,
             ids,
@@ -211,5 +215,45 @@ impl Tokenizer {
             "main".to_owned(),
         ));
         Self::from_repo(&repo)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    // use approx;
+    // use rand::{self, Rng, SeedableRng};
+
+    struct Setup {
+        // pub model_type: ModelType,
+        pub tokenizer: Tokenizer,
+    }
+
+    impl Setup {
+        fn new() -> Result<Self> {
+            let model_type = ModelType::Mistral7bInstructV02;
+            Ok(Self {
+                // model_type,
+                tokenizer: Tokenizer::load(model_type)?,
+            })
+        }
+    }
+
+    #[test]
+    fn encode_prompts() -> Result<()> {
+        let setup = Setup::new()?;
+        let tokenizer = &setup.tokenizer;
+        let prompts: Vec<Prompt> = vec![
+            "<s>[INST] Where can I find the best restaurants in NYC? [/INST]</s>"
+                .to_owned()
+                .into(),
+            "<s>[INST] Hello, how are you? [/INST]</s>"
+                .to_owned()
+                .into(),
+        ];
+        let _batch = tokenizer.encode_batch(prompts, false)?;
+
+        Ok(())
     }
 }

@@ -21,8 +21,8 @@ impl BatchEncoding {
                 &self.attention_mask,
                 &Tensor::ones(
                     next_tokens.shape().dims(),
-                    next_tokens.dtype(),
-                    next_tokens.device(),
+                    self.attention_mask.dtype(),
+                    self.attention_mask.device(),
                 )?,
             ],
             1,
@@ -39,19 +39,23 @@ impl BatchEncoding {
                 let dims = shape.dims();
                 tracing::debug!("dims {:?}", dims);
                 tracing::debug!("added_tokens {:?}", added_tokens);
-                let added_tensor = Tensor::full(
+                let prepended_tensor = Tensor::full(
                     other_batch.padding.pad_id,
                     (dims[0], added_tokens),
                     other_batch.ids.device(),
-                )?;
-                other_batch.ids = Tensor::cat(&[&added_tensor, other_batch.get_ids_ref()], 1)?;
-                let added_tensor = Tensor::ones(
+                )?
+                .to_dtype(self.ids.dtype())?;
+                other_batch.ids = Tensor::cat(&[&prepended_tensor, other_batch.get_ids_ref()], 1)?;
+                let prepended_tensor = Tensor::full(
+                    f32::NEG_INFINITY,
                     (dims[0], added_tokens),
-                    other_batch.get_attention_mask_ref().dtype(),
                     other_batch.ids.device(),
+                )?
+                .to_dtype(self.attention_mask.dtype())?;
+                other_batch.attention_mask = Tensor::cat(
+                    &[&prepended_tensor, other_batch.get_attention_mask_ref()],
+                    1,
                 )?;
-                other_batch.attention_mask =
-                    Tensor::cat(&[&added_tensor, other_batch.get_attention_mask_ref()], 1)?;
                 tracing::debug!("END other_batch {:?}", &other_batch);
             }
             (self_length, other_length) if other_length > self_length => {
@@ -60,20 +64,22 @@ impl BatchEncoding {
                 let dims = shape.dims();
                 tracing::debug!("dims {:?}", dims);
                 tracing::debug!("added_tokens {:?}", added_tokens);
-                let added_tensor = Tensor::full(
+                let prepended_tensor = Tensor::full(
                     self.padding.pad_id,
                     (dims[0], added_tokens),
                     self.ids.device(),
-                )?;
+                )?
+                .to_dtype(self.ids.dtype())?;
 
-                self.ids = Tensor::cat(&[&added_tensor, self.get_ids_ref()], 1)?;
-                let added_tensor = Tensor::zeros(
+                self.ids = Tensor::cat(&[&prepended_tensor, self.get_ids_ref()], 1)?;
+                let prepended_tensor = Tensor::full(
+                    f32::NEG_INFINITY,
                     (dims[0], added_tokens),
-                    self.get_attention_mask_ref().dtype(),
                     self.ids.device(),
-                )?;
+                )?
+                .to_dtype(self.attention_mask.dtype())?;
                 self.attention_mask =
-                    Tensor::cat(&[&added_tensor, self.get_attention_mask_ref()], 1)?;
+                    Tensor::cat(&[&prepended_tensor, self.get_attention_mask_ref()], 1)?;
                 tracing::debug!("END self {:?}", &self);
             }
             _ => (),
