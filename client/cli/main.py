@@ -15,7 +15,6 @@ def llm_cli(verbose: int) -> None:
 
 
 llm_cli.add_command(client_command)
-llm_cli.add_command(grpc_server_command)
 start = llm_cli
 
 
