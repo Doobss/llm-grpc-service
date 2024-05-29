@@ -1,7 +1,7 @@
 import grpc
 import logging
 from uuid import uuid4
-from client.reflection.grpcReflection import (
+from reflection.grpcReflection import (
     Method,
     Service,
     GrpcReflection
