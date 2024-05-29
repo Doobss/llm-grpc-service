@@ -71,11 +71,11 @@ async def start_client(
             while True:
                 input_prompt = click.prompt(f'{green("user")}')
                 last_message: Union[str, None] = None
-                async for message in client.prompt(content=apply_template(input_prompt)):
+                for message in client.prompt(content=apply_template(input_prompt)):
                     last_message = echo_message(message, last_message)
         except click.exceptions.Abort as close_event:
             echo(f'\n{grey("disconnecting client")}')
-            await client.close()
+            client.close()
             break
         except Exception as error:
             echo(f'''\n{red("Error occurred")}: {str(error)}''', nl=False)
