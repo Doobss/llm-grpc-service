@@ -2,7 +2,7 @@ import click
 import asyncio
 from typing import Union
 from uuid import uuid4
-from reflection.llmClient import LlmClient
+from reflection import LLmClient
 from .echo import echo, grey, green, red, magenta, cyan
 
 
