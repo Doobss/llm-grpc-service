@@ -70,12 +70,7 @@ async def start_client(
             while True:
                 input_prompt = click.prompt(f'{green("user")}')
                 last_message: Union[str, None] = None
-                request = PromptRequest(
-                    id=str(uuid4()),
-                    content=apply_template(input_prompt),
-                    config=PromptConfig()
-                )
-                async for message in client.prompt(request=request):
+                async for message in client.prompt(request=apply_template(input_prompt)):
                     last_message = echo_message(message, last_message)
         except click.exceptions.Abort as close_event:
             echo(f'\n{grey("disconnecting client")}')
@@ -90,25 +85,22 @@ async def start_client(
         echo(f'''{red("Exiting")}: exceeded max connection retries, try again in a bit.''')
 
 
-def echo_message(message: PromptReply, last_message: Union[str, None]) -> str:
-    if isinstance(message, PromptReply):
-        content = message.content
-        if last_message is not None:
-            new_content = content.replace(last_message, "")
-            echo(new_content, nl=False)
-        else:
-            echo(f'{cyan("llm")}: {content}', nl=False)
-        if message.is_end_of_sequence:
-            extra_info = get_message_info(message)
-            echo(f'\n\t{extra_info}')
-        return message.content
-    # if isinstance(message, ErrorMessage):
-    #     echo(f'''{red("Error while running prompt")}: {message.message}''')
-    return ''
+def echo_message(message, last_message: Union[str, None]) -> str:
+    content = message.content
+    if last_message is not None:
+        new_content = content.replace(last_message, "")
+        echo(new_content, nl=False)
+    else:
+        echo(f'{cyan("llm")}: {content}', nl=False)
+    if message.is_end_of_sequence:
+        extra_info = get_message_info(message)
+        echo(f'\n\t{extra_info}')
+    return message.content
 
 
 
-def get_message_info(message: PromptReply) -> str:
+
+def get_message_info(message) -> str:
     if message.meta is not None:
         return grey(f"model: {message.meta.model.type} "
                               f"token/sec: {message.meta.tokens_per_second:.2f} | "
