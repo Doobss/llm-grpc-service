@@ -60,12 +60,13 @@ async def start_client(
     ) -> None:
     connect_attempts = 0
     max_retries = 10
-    client = LLmClient(target=f'{host}:{port}')
+    target = f'{host}:{port}'
+    client = LLmClient(target=target)
     while max_retries > connect_attempts:
         try:
             connect_attempts = 0
             echo(f'''{green(f'Client connected')}''', nl=False)
-            echo.verbose(f' @ {magenta(client.url)}', nl=False)
+            echo.verbose(f' @ {magenta(target)}', nl=False)
             echo("\n")
             while True:
                 input_prompt = click.prompt(f'{green("user")}')
