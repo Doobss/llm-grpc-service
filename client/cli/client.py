@@ -113,6 +113,4 @@ def get_message_info(message) -> str:
 
 
 def apply_template(query: str) -> str:
-    return (f'GPT4 Correct User:\nYour name is Genome\n <|end_of_turn|>'
-            f'\nGPT4 Correct Assistant: Yes, I understand my job.\n<|end_of_turn|>'
-            f'\nGPT4 Correct User: Great!\nquery:\n\"{query}\"\nGPT4 Correct Assistant: \nresponse:')
+    return (f'<s>[INST] {query} [/INST] </s> response: ')
