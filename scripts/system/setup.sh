@@ -20,6 +20,8 @@ fi
 
 echo "Using nvcc version=${LOCAL_NVCC__VERSION}"
 
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
 sudo apt install pkg-config libssl-dev protobuf-compiler -y
 
     # println!("cargo:rerun-if-changed=build.rs");
