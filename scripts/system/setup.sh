@@ -24,6 +24,8 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 sudo apt install pkg-config libssl-dev protobuf-compiler -y
 
+export PKG_CONFIG_PATH=/opt/miniconda/lib/pkgconfig/openssl.pc
+
     # println!("cargo:rerun-if-changed=build.rs");
     # println!("cargo:rerun-if-env-changed=CUDA_ROOT");
     # println!("cargo:rerun-if-env-changed=CUDA_PATH");
