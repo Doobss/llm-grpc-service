@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm_grpc_client"
+description = "Package for setting up a llm worker"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dynamic = ['version']
+dependencies = [
+    "click==8.1.7",
+    "grpcio",
+    "grpcio-tools",
+    "grpcio-reflection",
+]
+
+
+[project.scripts]
+llm =  "cli:main.start"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.dynamic]
+version = {attr = "cli.version.__version__"}
