@@ -60,7 +60,7 @@ async def start_client(
     ) -> None:
     connect_attempts = 0
     max_retries = 10
-    client = LLmClient(user=username, host=host, port=port, secure=secure)
+    client = LLmClient(target=f'{host}:{port}')
     while max_retries > connect_attempts:
         try:
             connect_attempts = 0
