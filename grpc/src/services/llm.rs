@@ -165,15 +165,17 @@ impl TextGenerator {
                         if token_chunk_length == current_token || is_end_of_sequence {
                             let output_channel = output_channels.get(&next_batch.keys[index]);
                             if let Some(channel) = output_channel {
-                                channel
-                                    .blocking_send(PromptReply {
-                                        id: next_batch.keys[index].clone(),
-                                        content: decoded_tokens.to_owned(),
-                                        meta: None,
-                                        config: None,
-                                        is_end_of_sequence,
-                                    })
-                                    .expect("Error sending PromptReply")
+                                if !channel.is_closed() {
+                                    channel
+                                        .blocking_send(PromptReply {
+                                            id: next_batch.keys[index].clone(),
+                                            content: decoded_tokens.to_owned(),
+                                            meta: None,
+                                            config: None,
+                                            is_end_of_sequence,
+                                        })
+                                        .expect("Error sending PromptReply")   
+                                }
                             }
                         }
                         if is_end_of_sequence {
