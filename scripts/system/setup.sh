@@ -20,7 +20,7 @@ fi
 
 echo "Using nvcc version=${LOCAL_NVCC__VERSION}"
 
-
+sudo apt install pkg-config libssl-dev protobuf-compiler -y
 
     # println!("cargo:rerun-if-changed=build.rs");
     # println!("cargo:rerun-if-env-changed=CUDA_ROOT");
