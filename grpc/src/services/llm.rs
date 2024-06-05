@@ -1,5 +1,5 @@
 use crate::services::v1::*;
-use std::{collections::HashMap, pin::Pin};
+use std::{collections::HashMap, f32::consts::E, pin::Pin};
 use tokio::sync::mpsc;
 use tokio_stream::{wrappers::ReceiverStream, Stream};
 use tonic::{Request, Response, Status};
@@ -54,11 +54,14 @@ impl llm_server::Llm for LlmServer {
             prompt_sender,
             request: req.into_inner().into(),
         };
-        self.generator
-            .input_channel
-            .send(generation_request)
-            .await
-            .expect("Error sending to model");
+
+        if let Err(error) = self.generator
+        .input_channel
+        .send(generation_request)
+        .await {
+            let error: crate::Error = error.into();
+            return Err(error.into());
+        }
 
         let output_stream = ReceiverStream::new(receiver);
         Ok(Response::new(Box::pin(output_stream) as Self::promptStream))
@@ -81,7 +84,7 @@ struct PromptGenerationRequest {
 impl From<PromptRequest> for llm::Prompt {
     fn from(value: PromptRequest) -> Self {
         Self {
-            id: value.id.unwrap_or(llm::Prompt::gen_id()),
+            id: llm::Prompt::gen_id(),
             content: value.content,
         }
     }
@@ -90,7 +93,7 @@ impl From<PromptRequest> for llm::Prompt {
 impl From<llm::Prompt> for PromptRequest {
     fn from(value: llm::Prompt) -> Self {
         Self {
-            id: Some(value.id),
+            id: value.id,
             content: value.content,
             config: None,
         }
