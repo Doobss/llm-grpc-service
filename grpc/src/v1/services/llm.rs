@@ -1,4 +1,4 @@
-use crate::services::v1::*;
+use crate::v1::pb::v1::llm::service::*;
 use std::{collections::HashMap, pin::Pin};
 use tokio::sync::mpsc;
 use tokio_stream::{wrappers::ReceiverStream, Stream};
@@ -30,6 +30,7 @@ impl llm_server::Llm for LlmServer {
             "LlmServer::prompt client connected from: {:?}",
             req.remote_addr()
         );
+
         let (prompt_sender, mut prompt_receiver) = mpsc::channel(128);
         let (sender, receiver) = mpsc::channel(128);
         let start_generation = std::time::Instant::now();
@@ -81,21 +82,21 @@ struct PromptGenerationRequest {
 impl From<PromptRequest> for llm::Prompt {
     fn from(value: PromptRequest) -> Self {
         Self {
-            id: value.id.unwrap_or(llm::Prompt::gen_id()),
+            id: llm::Prompt::gen_id(),
             content: value.content,
         }
     }
 }
 
-impl From<llm::Prompt> for PromptRequest {
-    fn from(value: llm::Prompt) -> Self {
-        Self {
-            id: Some(value.id),
-            content: value.content,
-            config: None,
-        }
-    }
-}
+// impl From<llm::Prompt> for PromptRequest {
+//     fn from(value: llm::Prompt) -> Self {
+//         Self {
+//             id: Some(llm::Prompt::gen_id()),
+//             content: value.content,
+//             config: None,
+//         }
+//     }
+// }
 
 #[derive(Debug)]
 struct TextGenerator {
@@ -174,7 +175,7 @@ impl TextGenerator {
                                             config: None,
                                             is_end_of_sequence,
                                         })
-                                        .expect("Error sending PromptReply")   
+                                        .expect("Error sending PromptReply")
                                 }
                             }
                         }

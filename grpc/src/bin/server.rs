@@ -1,7 +1,4 @@
-pub mod pb {
-    tonic::include_proto!("llm.service");
-}
-use grpc::{logging, services};
+use grpc::{logging, v1};
 use std::net::ToSocketAddrs;
 use tonic::transport::Server;
 
@@ -53,8 +50,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     logging::init();
     tracing::info!("Starting server");
     Server::builder()
-        .add_service(services::spec_service()?)
-        .add_service(services::llm::service(args.model, sampling))
+        .add_service(v1::services::spec_service()?)
+        .add_service(v1::services::llm::service(args.model, sampling))
         .serve("[::]:50051".to_socket_addrs().unwrap().next().unwrap())
         .await
         .unwrap();

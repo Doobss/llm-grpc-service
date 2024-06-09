@@ -8,6 +8,6 @@ extern crate uuid;
 
 mod error;
 pub mod logging;
-pub mod services;
+pub mod v1;
 
 pub use error::{Error, Result};
