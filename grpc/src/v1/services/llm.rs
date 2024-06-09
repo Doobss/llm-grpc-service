@@ -79,40 +79,6 @@ struct PromptGenerationRequest {
     pub prompt_sender: mpsc::Sender<PromptReply>,
 }
 
-impl From<PromptConfig> for llm::PromptConfig {
-    fn from(value: PromptConfig) -> Self {
-        Self {
-            max_new_tokens: value.max_new_tokens,
-            num_beams: value.num_beams,
-            temperature: value.temperature,
-            top_k: value.top_k,
-            top_p: value.top_p,
-            repetition_penalty: value.repetition_penalty,
-        }
-    }
-}
-
-impl From<PromptRequest> for llm::Prompt {
-    fn from(value: PromptRequest) -> Self {
-        let id = if value.id.is_empty() {
-            llm::Prompt::gen_id()
-        } else {
-            value.id
-        };
-        let config = if let Some(config) = value.config {
-            config.into()
-        } else {
-            llm::PromptConfig::default()
-        };
-        tracing::info!("Prompt {:?} config: {:?}", &id, &config);
-        Self {
-            id,
-            content: value.content,
-            config,
-        }
-    }
-}
-
 #[derive(Debug)]
 struct TextGenerator {
     input_channel: mpsc::Sender<PromptGenerationRequest>,

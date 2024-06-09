@@ -15,6 +15,8 @@ pub struct PromptConfig {
     pub top_p: f32,
     #[prost(float, tag = "6")]
     pub repetition_penalty: f32,
+    #[prost(int64, tag = "7")]
+    pub seed: i64,
 }
 /// A request for llm streaming generation.
 #[allow(clippy::derive_partial_eq_without_eq)]

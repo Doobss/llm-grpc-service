@@ -1,9 +1,10 @@
 #[derive(Debug, Default)]
 pub struct PromptConfig {
-    pub max_new_tokens: i32,
-    pub num_beams: i32,
-    pub temperature: f32,
-    pub top_k: i32,
-    pub top_p: f32,
-    pub repetition_penalty: f32,
+    pub max_new_tokens: Option<i32>,
+    pub num_beams: Option<i32>,
+    pub temperature: Option<f64>,
+    pub top_k: Option<usize>,
+    pub top_p: Option<f64>,
+    pub repetition_penalty: Option<f32>,
+    pub seed: u64,
 }

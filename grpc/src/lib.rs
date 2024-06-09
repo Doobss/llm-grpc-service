@@ -1,5 +1,6 @@
 extern crate clap;
 extern crate llm;
+extern crate rand;
 extern crate thiserror;
 extern crate tonic;
 extern crate tracing;

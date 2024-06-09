@@ -436,10 +436,7 @@ impl Model {
     ) -> Result<Tensor> {
         let (_b_size, seq_len) = input_ids.dims2()?;
         let mut embedded_ids: Tensor = self.embed_tokens.forward(input_ids)?;
-        let attention_mask = attention_mask
-            .unsqueeze(1)?
-            .unsqueeze(1)?
-            .to_dtype(DType::BF16)?;
+        let attention_mask = attention_mask.unsqueeze(1)?.unsqueeze(1)?;
         for layer in self.layers.iter_mut() {
             embedded_ids = layer.forward(
                 &embedded_ids,

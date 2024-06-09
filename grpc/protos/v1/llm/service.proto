@@ -10,6 +10,7 @@ message PromptConfig {
   int32 top_k = 4;
   float top_p = 5;
   float repetition_penalty = 6;
+  int64 seed = 7;
 }
 
 // A request for llm streaming generation.

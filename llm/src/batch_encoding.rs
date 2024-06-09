@@ -120,7 +120,7 @@ impl BatchEncoding {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{ModelType, Prompt, Tokenizer};
+    use super::super::{ModelType, Tokenizer};
 
     #[test]
     fn batch_merge_same_size() {
