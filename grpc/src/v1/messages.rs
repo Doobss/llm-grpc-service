@@ -23,9 +23,9 @@ impl From<PromptConfig> for llm::PromptConfig {
         Self {
             max_new_tokens: default_to_optional(value.max_new_tokens),
             num_beams: default_to_optional(value.num_beams),
-            temperature: default_to_optional(value.temperature.into()),
+            temperature: default_to_optional(value.temperature as f64),
             top_k: default_to_optional(value.top_k as usize),
-            top_p: default_to_optional(value.top_p.into()),
+            top_p: default_to_optional(value.top_p as f64),
             repetition_penalty: default_to_optional(value.repetition_penalty),
             seed,
         }
@@ -39,9 +39,10 @@ impl From<PromptRequest> for llm::Prompt {
         } else {
             llm::PromptConfig::default()
         };
-        tracing::debug!("Prompt config: {:?}", &config);
+        let id = default_to_optional(value.id).unwrap_or(llm::Prompt::gen_id());
+        tracing::debug!("Prompt.id: {:?} config: {:?}", &id, &config);
         Self {
-            id: default_to_optional(value.id).unwrap_or(llm::Prompt::gen_id()),
+            id,
             content: value.content,
             config,
         }

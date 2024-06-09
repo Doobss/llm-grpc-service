@@ -22,6 +22,7 @@ extern crate uuid;
 mod batch_encoding;
 mod config;
 mod error;
+mod logits_preprocessor;
 mod logits_processor;
 mod model;
 mod model_files;
