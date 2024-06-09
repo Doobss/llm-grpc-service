@@ -5,12 +5,11 @@ package v1.llm.service;
 // Ways to configure a prompt request.
 message PromptConfig {
   int32 max_new_tokens = 1;
-  bool do_sample = 2;
-  int32 num_beams = 3;
-  float temperature = 4;
-  int32 top_k = 5;
-  float top_p = 6;
-  float repetition_penalty = 7;
+  int32 num_beams = 2;
+  float temperature = 3;
+  int32 top_k = 4;
+  float top_p = 5;
+  float repetition_penalty = 6;
 }
 
 // A request for llm streaming generation.

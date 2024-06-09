@@ -55,11 +55,11 @@ impl llm_server::Llm for LlmServer {
             prompt_sender,
             request: req.into_inner().into(),
         };
-        self.generator
-            .input_channel
-            .send(generation_request)
-            .await
-            .expect("Error sending to model");
+        let result = self.generator.input_channel.send(generation_request).await;
+        if let Err(error) = result {
+            let error: crate::Error = error.into();
+            return Err(error.into());
+        }
 
         let output_stream = ReceiverStream::new(receiver);
         Ok(Response::new(Box::pin(output_stream) as Self::promptStream))
@@ -79,24 +79,39 @@ struct PromptGenerationRequest {
     pub prompt_sender: mpsc::Sender<PromptReply>,
 }
 
-impl From<PromptRequest> for llm::Prompt {
-    fn from(value: PromptRequest) -> Self {
+impl From<PromptConfig> for llm::PromptConfig {
+    fn from(value: PromptConfig) -> Self {
         Self {
-            id: llm::Prompt::gen_id(),
-            content: value.content,
+            max_new_tokens: value.max_new_tokens,
+            num_beams: value.num_beams,
+            temperature: value.temperature,
+            top_k: value.top_k,
+            top_p: value.top_p,
+            repetition_penalty: value.repetition_penalty,
         }
     }
 }
 
-// impl From<llm::Prompt> for PromptRequest {
-//     fn from(value: llm::Prompt) -> Self {
-//         Self {
-//             id: Some(llm::Prompt::gen_id()),
-//             content: value.content,
-//             config: None,
-//         }
-//     }
-// }
+impl From<PromptRequest> for llm::Prompt {
+    fn from(value: PromptRequest) -> Self {
+        let id = if value.id.is_empty() {
+            llm::Prompt::gen_id()
+        } else {
+            value.id
+        };
+        let config = if let Some(config) = value.config {
+            config.into()
+        } else {
+            llm::PromptConfig::default()
+        };
+        tracing::info!("Prompt {:?} config: {:?}", &id, &config);
+        Self {
+            id,
+            content: value.content,
+            config,
+        }
+    }
+}
 
 #[derive(Debug)]
 struct TextGenerator {

@@ -5,17 +5,15 @@
 pub struct PromptConfig {
     #[prost(int32, tag = "1")]
     pub max_new_tokens: i32,
-    #[prost(bool, tag = "2")]
-    pub do_sample: bool,
-    #[prost(int32, tag = "3")]
+    #[prost(int32, tag = "2")]
     pub num_beams: i32,
-    #[prost(float, tag = "4")]
+    #[prost(float, tag = "3")]
     pub temperature: f32,
-    #[prost(int32, tag = "5")]
+    #[prost(int32, tag = "4")]
     pub top_k: i32,
-    #[prost(float, tag = "6")]
+    #[prost(float, tag = "5")]
     pub top_p: f32,
-    #[prost(float, tag = "7")]
+    #[prost(float, tag = "6")]
     pub repetition_penalty: f32,
 }
 /// A request for llm streaming generation.
