@@ -19,8 +19,6 @@ extern crate tracing;
 extern crate tracing_subscriber;
 extern crate uuid;
 
-mod batch_encoding;
-mod config;
 mod error;
 mod generation;
 mod logits;
@@ -29,9 +27,7 @@ mod prompts;
 mod tokenizers;
 mod utils;
 
-pub use batch_encoding::BatchEncoding;
 pub use candle_transformers::generation::Sampling;
-pub use config::Config;
 pub use error::{Error, Result};
 
 pub use generation::*;
