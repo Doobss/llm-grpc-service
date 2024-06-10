@@ -1,9 +1,12 @@
-use crate::{BatchEncoding, Error, ModelType, Prompt, Result, TokenizerFiles};
+use super::tokenizer_files::TokenizerFiles;
+use crate::models::ModelType;
+use crate::prompts::Prompt;
+use crate::{BatchEncoding, Error, Result};
 use candle_core::Tensor;
 use candle_examples::device as get_device;
 use hf_hub::{api, api::sync::ApiRepo, Repo, RepoType};
+use huggingface_tokenizers::{PaddingDirection, PaddingParams, PaddingStrategy};
 use serde_json;
-use tokenizers::{PaddingDirection, PaddingParams, PaddingStrategy};
 
 #[derive(Debug)]
 pub struct Tokenizer {
@@ -92,7 +95,7 @@ impl Tokenizer {
     pub fn from_files(files: TokenizerFiles) -> Result<Self> {
         tracing::debug!("loading tokenizer config: {:?}", &files.config);
 
-        let mut config = files.load_config::<serde_json::Value>()?;
+        let config = files.load_config::<serde_json::Value>()?;
         let special_tokens = match files.load_special_tokens::<serde_json::Value>()? {
             Some(value) => value,
             None => config.clone(),

@@ -1,6 +1,6 @@
 use crate::Result;
 use candle_core::Tensor;
-use tokenizers::PaddingParams;
+use huggingface_tokenizers::PaddingParams;
 
 #[derive(Debug)]
 pub struct BatchEncoding {

@@ -1,2 +1,6 @@
-pub mod mistral;
-pub mod quantized_mistral;
+mod model;
+mod model_files;
+mod models;
+
+pub use self::model::{Model, ModelType};
+pub use self::model_files::ModelFiles;
