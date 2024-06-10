@@ -1,6 +1,8 @@
 extern crate tokio;
+use std::sync::Arc;
 use super::{GenerationBatch, GenerationReply, GenerationRequest, TextGeneration};
-use crate::{Error, ModelType, Prompt, Result};
+use crate::{logits, Error, ModelType, Prompt, Result, TokenizedBatch};
+use candle_core::Tensor;
 
 pub type GenerationRequestSender = tokio::sync::mpsc::Sender<GenerationRequest>;
 pub type GenerationReplyReceiver = tokio::sync::mpsc::Receiver<GenerationReply>;
@@ -13,9 +15,13 @@ type TaskResult = tokio::task::JoinHandle<Result<()>>;
 
 impl Generator {
     pub async fn new(text_generation: TextGeneration) -> Self {
-        let (request_sender, mut request_receiver) =
-            tokio::sync::mpsc::channel::<GenerationRequest>(128);
-        let (batch_sender, batch_receiver) = tokio::sync::mpsc::channel::<GenerationBatch>(128);
+        use tokio::sync::mpsc::channel;
+        let tokenizer = Arc::new(text_generation.tokenizer);
+
+        let (request_sender, mut request_receiver) = channel::<GenerationRequest>(128);
+        let (batch_sender, mut batch_receiver) = channel::<GenerationBatch>(128);
+        let (generation_sender, mut generation_receiver) = channel::<TokenizedBatch>(128);
+        let (decode_sender, mut decode_receiver) = channel::<(TokenizedBatch, Tensor)>(128);
 
         let mut batch_task: TaskResult = tokio::spawn(async move {
             loop {
@@ -46,33 +52,92 @@ impl Generator {
             }
         });
 
-        let mut tokenize_task: TaskResult = tokio::task::spawn_blocking(move || loop {});
+        let tokenizer_binding = tokenizer.clone();
+        let tokenizer_generation_sender = generation_sender.clone();
+        let mut tokenize_task: TaskResult = tokio::task::spawn_blocking(move || {
+            let tokenizer = tokenizer_binding.as_ref();
+            loop {
+                tracing::debug!("tokenize_task: awaiting batches");
+                if let Some(generation_batch) = batch_receiver.blocking_recv() {
+                    let tokenized_batch = TokenizedBatch::from_generation_batch(generation_batch, tokenizer)?;
+                    tracing::debug!("tokenize_task: sending batch {:?}", &tokenized_batch);
+                    tokenizer_generation_sender.blocking_send(tokenized_batch)?;
+                }
+            }
+        });
 
-        let mut generation_task: TaskResult = tokio::task::spawn_blocking(move || loop {});
+        let mut model = text_generation.model;
+        let mut generation_task: TaskResult = tokio::task::spawn_blocking(move || {
+            loop {
+                tracing::debug!("generation_task: awaiting batches");
+                if let Some(tokenized_batch) = generation_receiver.blocking_recv() {
+                    let next_tokens = model.forward(&tokenized_batch)?;
+                    decode_sender.blocking_send((tokenized_batch, next_tokens))?;
+                }
+            }
+        });
 
-        let mut decode_task: TaskResult = tokio::task::spawn_blocking(move || loop {});
+        let decode_binding = tokenizer.clone();
+        let decode_generation_sender = generation_sender.clone();
+        let mut decode_task: TaskResult = tokio::task::spawn_blocking(move || {
+            let tokenizer = decode_binding.as_ref();
+            loop {
+                tracing::debug!("decode_task: awaiting results");
+                if let Some((tokenized_batch, logits)) = decode_receiver.blocking_recv() {
+                    let TokenizedBatch {
+                        requests,
+                        input_ids,
+                        attention_mask,
+                        past_key_values
+                    } = tokenized_batch;
+                    let mut indicies_to_keep = Vec::new();
+                    let end_of_sequence_tokens = crate::get_eos_tokens(&next_tokens, tokenizer.eos_id)?;
+
+                    for (index, request) in requests.values().enumerate() {
+                        let is_end_of_sequence = if let Some(value) = end_of_sequence_tokens.get(index) {
+                            *value == 1
+                        } else {
+                            false
+                        };
+                        if !is_end_of_sequence {
+                            indicies_to_keep.push(index);
+                        }
+
+
+                    }
+                }
+            }
+        });
 
         tokio::select! {
             _ = (&mut batch_task) => {
-                tracing::error!("Error in batch task, aborting all other tasks.");
+                if let Err(error) = batch_task.await {
+                    tracing::error!("Error in batch task, aborting all other tasks. {:?}", error);
+                }
                 tokenize_task.abort();
                 generation_task.abort();
                 decode_task.abort();
             },
             _ = (&mut tokenize_task) => {
-                tracing::error!("Error in tokenize task, aborting all other tasks.");
+                if let Err(error) = tokenize_task.await {
+                    tracing::error!("Error in tokenize task, aborting all other tasks. {:?}", error);
+                }
                 batch_task.abort();
                 generation_task.abort();
                 decode_task.abort();
             },
             _ = (&mut generation_task) => {
-                tracing::error!("Error in generation task, aborting all other tasks.");
+                if let Err(error) = generation_task.await {
+                    tracing::error!("Error in generation task, aborting all other tasks. {:?}", error);
+                }
                 batch_task.abort();
                 tokenize_task.abort();
                 decode_task.abort();
             },
             _ = (&mut decode_task) => {
-                tracing::error!("Error in decode task, aborting all other tasks.");
+                if let Err(error) = decode_task.await {
+                    tracing::error!("Error in decode task, aborting all other tasks. {:?}", error);
+                }
                 batch_task.abort();
                 tokenize_task.abort();
                 generation_task.abort();

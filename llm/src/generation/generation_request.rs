@@ -9,6 +9,7 @@ pub type GenerationReplySender = tokio::sync::mpsc::Sender<GenerationReply>;
 pub struct GenerationRequest {
     pub id: String,
     pub content: String,
+    pub generated: String,
     pub config: PromptConfig,
     pub reply_sender: GenerationReplySender,
     pub logit: GenerationLogitsProcessor,
@@ -28,6 +29,7 @@ impl GenerationRequest {
             config,
             reply_sender,
             logit,
+            generated: String::new()
         }
     }
 }

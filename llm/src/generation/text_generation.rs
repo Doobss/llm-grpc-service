@@ -1,16 +1,16 @@
-use crate::{BatchEncoding, Model, ModelType, Result, Tokenizer};
+use crate::{Model, ModelType, Result, TokenizedBatch, Tokenizer};
 use candle_core::Tensor;
 
 pub struct TextGeneration {
-    model: Model,
+    pub model: Model,
     pub tokenizer: Tokenizer,
 }
 
 impl TextGeneration {
-    pub fn next(&mut self, batch: &BatchEncoding) -> Result<Tensor> {
+    pub fn next_token(&mut self, batch: &TokenizedBatch) -> Result<Tensor> {
         let logits = self
             .model
-            .forward(&batch.ids, &batch.attention_mask)?
+            .forward(&batch)?
             .squeeze(1)?;
         Ok(logits)
     }

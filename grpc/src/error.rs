@@ -30,15 +30,3 @@ impl<T> From<tokio::sync::mpsc::error::SendError<T>> for Error {
         }
     }
 }
-
-impl From<Error> for tonic::Status {
-    fn from(value: Error) -> Self {
-        tonic::Status::internal(value.to_string())
-    }
-}
-
-impl<T> From<tokio::sync::mpsc::error::SendError<T>> for Error {
-    fn from(value: tokio::sync::mpsc::error::SendError<T>) -> Self {
-        Error::InternalError(value.to_string())
-    }
-}

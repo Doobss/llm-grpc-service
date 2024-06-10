@@ -1,5 +1,5 @@
 use super::ModelFiles;
-use crate::{Error, Result};
+use crate::{Error, GenerationBatch, Result, TokenizedBatch};
 use candle_core::Tensor;
 use candle_nn::VarBuilder;
 use candle_transformers;
@@ -47,13 +47,13 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn forward(&mut self, input_tokens: &Tensor, attention_mask: &Tensor) -> Result<Tensor> {
+    pub fn forward(&mut self, batch: &TokenizedBatch) -> Result<Tensor> {
         match &mut self.inner {
             InnerModel::Mistral(model) => Ok(model
-                .forward_with_attention(input_tokens, attention_mask, 0)
+                .forward_with_attention(&batch.input_ids, &batch.attention_mask, 0)
                 .expect("Error in model inner forward.")),
             InnerModel::QuantizedMistral(model) => Ok(model
-                .forward_with_attention(input_tokens, attention_mask, 0)
+                .forward_with_attention(&batch.input_ids, &batch.attention_mask, 0)
                 .expect("Error in model inner forward.")),
         }
     }

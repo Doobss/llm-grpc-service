@@ -54,16 +54,8 @@ impl llm_server::Llm for LlmServer {
             prompt_sender,
             request: req.into_inner().into(),
         };
-<<<<<<< HEAD:grpc/src/services/llm.rs
-
-        if let Err(error) = self.generator
-        .input_channel
-        .send(generation_request)
-        .await {
-=======
         let result = self.generator.input_channel.send(generation_request).await;
         if let Err(error) = result {
->>>>>>> 6f8da75df16c01e091b845b4d165a2449d9d28c4:grpc/src/v1/services/llm.rs
             let error: crate::Error = error.into();
             return Err(error.into());
         }
@@ -86,28 +78,6 @@ struct PromptGenerationRequest {
     pub prompt_sender: mpsc::Sender<PromptReply>,
 }
 
-<<<<<<< HEAD:grpc/src/services/llm.rs
-impl From<PromptRequest> for llm::Prompt {
-    fn from(value: PromptRequest) -> Self {
-        Self {
-            id: llm::Prompt::gen_id(),
-            content: value.content,
-        }
-    }
-}
-
-impl From<llm::Prompt> for PromptRequest {
-    fn from(value: llm::Prompt) -> Self {
-        Self {
-            id: value.id,
-            content: value.content,
-            config: None,
-        }
-    }
-}
-
-=======
->>>>>>> 6f8da75df16c01e091b845b4d165a2449d9d28c4:grpc/src/v1/services/llm.rs
 #[derive(Debug)]
 struct TextGenerator {
     input_channel: mpsc::Sender<PromptGenerationRequest>,
