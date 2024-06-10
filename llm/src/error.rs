@@ -18,4 +18,22 @@ pub enum Error {
     JsonError(#[from] JsonError),
     #[error(transparent)]
     TokenizerError(#[from] TokenizerError),
+    #[error("Generation error: {message}")]
+    GenerationError { message: String },
+}
+
+impl<T> From<tokio::sync::mpsc::error::SendError<T>> for Error {
+    fn from(value: tokio::sync::mpsc::error::SendError<T>) -> Self {
+        Error::GenerationError {
+            message: value.to_string(),
+        }
+    }
+}
+
+impl From<tokio::sync::mpsc::error::TryRecvError> for Error {
+    fn from(value: tokio::sync::mpsc::error::TryRecvError) -> Self {
+        Error::GenerationError {
+            message: value.to_string(),
+        }
+    }
 }

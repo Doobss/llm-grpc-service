@@ -36,22 +36,12 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
-    let temperature = args.temperature.unwrap_or(0.);
-    let sampling = if temperature <= 0. {
-        llm::Sampling::ArgMax
-    } else {
-        match (args.top_k, args.top_p) {
-            (None, None) => llm::Sampling::All { temperature },
-            (Some(k), None) => llm::Sampling::TopK { k, temperature },
-            (None, Some(p)) => llm::Sampling::TopP { p, temperature },
-            (Some(k), Some(p)) => llm::Sampling::TopKThenTopP { k, p, temperature },
-        }
-    };
+
     logging::init();
     tracing::info!("Starting server");
     Server::builder()
         .add_service(v1::services::spec_service()?)
-        .add_service(v1::services::llm::service(args.model, sampling))
+        .add_service(v1::services::llm::service(args.model))
         .serve("[::]:50051".to_socket_addrs().unwrap().next().unwrap())
         .await
         .unwrap();

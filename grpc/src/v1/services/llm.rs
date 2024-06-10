@@ -13,10 +13,9 @@ pub struct LlmServer {
 }
 
 impl LlmServer {
-    pub fn new(model_type: ModelType, sampling: llm::Sampling) -> crate::Result<Self> {
+    pub fn new(model_type: ModelType) -> crate::Result<Self> {
         Ok(Self {
-            generator: TextGenerator::new(model_type, sampling)
-                .expect("Error initializing text generation"),
+            generator: TextGenerator::new(model_type).expect("Error initializing text generation"),
         })
     }
 }
@@ -66,9 +65,9 @@ impl llm_server::Llm for LlmServer {
     }
 }
 
-pub fn service(model_type: ModelType, sampling: llm::Sampling) -> llm_server::LlmServer<LlmServer> {
+pub fn service(model_type: ModelType) -> llm_server::LlmServer<LlmServer> {
     tracing::info!("Adding llm service");
-    let server = LlmServer::new(model_type, sampling).expect("Error loading llm service");
+    let server = LlmServer::new(model_type).expect("Error loading llm service");
     llm_server::LlmServer::new(server)
 }
 
@@ -85,12 +84,12 @@ struct TextGenerator {
 }
 
 impl TextGenerator {
-    pub fn new(model_type: ModelType, sampling: llm::Sampling) -> crate::Result<Self> {
+    pub fn new(model_type: ModelType) -> crate::Result<Self> {
         let (input_channel, mut receiver) = mpsc::channel(128);
 
         tokio::task::spawn_blocking(move || {
             let mut text_generation =
-                TextGeneration::new(model_type, Some(sampling)).expect("loading text generator");
+                TextGeneration::new(model_type).expect("loading text generator");
             let mut output_channels = HashMap::new();
             tracing::info!("Model {:?} initialized.", model_type);
             let mut batch: Option<llm::BatchEncoding> = None;

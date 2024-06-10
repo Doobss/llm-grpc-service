@@ -1379,6 +1379,8 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokenizers",
+ "tokio",
+ "tokio-stream",
  "tracing",
  "tracing-subscriber",
  "uuid",

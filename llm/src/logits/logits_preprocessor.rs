@@ -2,7 +2,7 @@ use crate::{PromptConfig, Result};
 use candle_core::Tensor;
 // use candle_transformers;
 
-#[derive()]
+#[derive(Debug)]
 pub struct LogitsPreProcessor {
     repetition_penalty: Option<f32>,
 }

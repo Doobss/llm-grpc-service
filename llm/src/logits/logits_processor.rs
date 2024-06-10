@@ -1,3 +1,5 @@
+use std::{any::Any, fmt::Debug};
+
 use crate::Result;
 use candle_core::{IndexOp, Tensor};
 use candle_transformers::generation::{self, Sampling};
@@ -50,6 +52,15 @@ impl Default for LogitsProcessor {
         let sampling = generation::Sampling::ArgMax;
         let inner = generation::LogitsProcessor::from_sampling(seed, sampling);
         Self { inner }
+    }
+}
+
+impl Debug for LogitsProcessor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let inner_type = self.inner.type_id();
+        f.debug_struct("LogitsProcessor")
+            .field("inner", &inner_type)
+            .finish()
     }
 }
 
