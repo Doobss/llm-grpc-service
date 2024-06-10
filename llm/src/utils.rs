@@ -13,3 +13,21 @@ where
     let value: T = serde_json::from_slice(&file_data)?;
     Ok(value)
 }
+
+pub fn get_sampling(
+    temperature: Option<f64>,
+    top_k: Option<usize>,
+    top_p: Option<f64>,
+) -> crate::Sampling {
+    let temperature = temperature.unwrap_or_default();
+    if temperature <= 0. {
+        crate::Sampling::ArgMax
+    } else {
+        match (top_k, top_p) {
+            (None, None) => crate::Sampling::All { temperature },
+            (Some(k), None) => crate::Sampling::TopK { k, temperature },
+            (None, Some(p)) => crate::Sampling::TopP { p, temperature },
+            (Some(k), Some(p)) => crate::Sampling::TopKThenTopP { k, p, temperature },
+        }
+    }
+}

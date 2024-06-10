@@ -1,13 +1,8 @@
 pub mod llm;
 
+use crate::v1;
 use crate::Result;
 use tonic_reflection::server::{ServerReflection, ServerReflectionServer};
-
-pub mod v1 {
-    tonic::include_proto!("llm.service");
-    pub const FILE_DESCRIPTOR_SET: &[u8] =
-        tonic::include_file_descriptor_set!("service_v1_descriptor");
-}
 
 pub fn spec_service() -> Result<ServerReflectionServer<impl ServerReflection>> {
     let spec = tonic_reflection::server::Builder::configure()

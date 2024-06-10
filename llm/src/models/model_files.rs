@@ -1,4 +1,5 @@
-use crate::{utils, ModelType, Result};
+use super::ModelType;
+use crate::{utils, Result};
 use candle_examples::hub_load_safetensors;
 use hf_hub::api::sync::ApiRepo;
 use std::path::PathBuf;

@@ -1,12 +1,12 @@
+use std::{any::Any, fmt::Debug};
+
 use crate::Result;
 use candle_core::{IndexOp, Tensor};
 use candle_transformers::generation::{self, Sampling};
 
 #[derive()]
 pub struct LogitsProcessor {
-    sampling: generation::Sampling,
     inner: generation::LogitsProcessor,
-    seed: u64,
 }
 
 impl LogitsProcessor {
@@ -19,69 +19,30 @@ impl LogitsProcessor {
             samples.push(vec![logit])
         }
         Ok(Tensor::new(samples, logits.device())?)
-        // match self.sampling {
-        //     generation::Sampling::ArgMax => Ok(logits.argmax_keepdim(1)?),
-        //     generation::Sampling::All { temperature } => {
-        //         let batch_length = logits.shape().dims()[0];
-        //         let original_logits = logits.to_vec2::<f32>()?;
-        //         let test_logits = self.apply_temperature(logits, temperature)?;
-        //         let tempred_logits = test_logits.to_vec2::<f32>()?;
-        //         for i in 0..batch_length {
-        //             println!("[{i}] original_logits: {:?}", &original_logits[i]);
-        //             println!("[{i}] tempred_logits: {:?}\n", &tempred_logits[i]);
-        //         }
-
-        //         let mut samples = Vec::new();
-        //         for index in 0..batch_length {
-        //             let logit_row = logits.i(index)?;
-        //             let logit = self.inner.sample(&logit_row)?;
-        //             samples.push(vec![logit])
-        //         }
-        //         Ok(Tensor::new(samples, logits.device())?)
-        //     }
-        //     _ => {
-        //         let batch_length = logits.shape().dims()[0];
-        //         let mut samples = Vec::new();
-        //         for index in 0..batch_length {
-        //             let logit_row = logits.i(index)?;
-        //             let logit = self.inner.sample(&logit_row)?;
-        //             samples.push(vec![logit])
-        //         }
-        //         Ok(Tensor::new(samples, logits.device())?)
-        //     }
-        // }
-    }
-
-    // fn sample_multinomial(&mut self, prs: &Vec<f32>) -> Result<u32> {
-    //     let distr = rand::distributions::WeightedIndex::new(prs).map_err(Error::wrap)?;
-    //     let next_token = distr.sample(&mut self.rng) as u32;
-    //     Ok(next_token)
-    // }
-
-    fn apply_temperature(&self, logits: &Tensor, temperature: f64) -> Result<Tensor> {
-        println!("apply_temperature logits: {:?}", &logits);
-        let temperature =
-            Tensor::full(temperature, &[1], logits.device())?.to_dtype(logits.dtype())?;
-        println!("temperature: {:?}", &temperature);
-        let logits = logits.broadcast_div(&temperature)?;
-        let logits = candle_nn::ops::softmax_last_dim(&logits)?;
-        Ok(logits)
     }
 }
 
 impl LogitsProcessor {
     pub fn from_sampling(seed: u64, sampling: Sampling) -> Self {
-        tracing::info!(
+        tracing::debug!(
             "Creating logits processor with {:?} sampling and a seed value {}",
             &sampling,
             &seed
         );
-        let inner = generation::LogitsProcessor::from_sampling(seed, sampling.clone());
-        Self {
-            inner,
-            sampling,
-            seed,
-        }
+        let inner = generation::LogitsProcessor::from_sampling(seed, sampling);
+        Self { inner }
+    }
+
+    pub fn from_config(config: &crate::PromptConfig) -> Self {
+        let sampling = crate::utils::get_sampling(config.temperature, config.top_k, config.top_p);
+        tracing::debug!(
+            "Creating logits processor with {:?} sampling and a seed value {}",
+            &sampling,
+            &config.seed
+        );
+
+        let inner = generation::LogitsProcessor::from_sampling(config.seed, sampling);
+        Self { inner }
     }
 }
 
@@ -89,12 +50,17 @@ impl Default for LogitsProcessor {
     fn default() -> Self {
         let seed = 100;
         let sampling = generation::Sampling::ArgMax;
-        let inner = generation::LogitsProcessor::from_sampling(seed, sampling.clone());
-        Self {
-            inner,
-            sampling,
-            seed,
-        }
+        let inner = generation::LogitsProcessor::from_sampling(seed, sampling);
+        Self { inner }
+    }
+}
+
+impl Debug for LogitsProcessor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let inner_type = self.inner.type_id();
+        f.debug_struct("LogitsProcessor")
+            .field("inner", &inner_type)
+            .finish()
     }
 }
 
@@ -152,29 +118,29 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn apply_temperature_to_logit_batch() -> Result<()> {
-        let setup = Setup::new()?;
-        let para_logits_processor = LogitsProcessor::from_sampling(
-            setup.seed,
-            generation::Sampling::All {
-                temperature: setup.temperature,
-            },
-        );
-        for batch_size in 1..5 {
-            let (logit_batch, _) = setup.get_logit_batch(Some(batch_size))?;
-            let tempered_batch =
-                para_logits_processor.apply_temperature(&logit_batch, setup.temperature)?;
-            let tempered_batch_sum: f32 = tempered_batch.sum((0, 1))?.to_scalar()?;
-            println!("tempered_batch_sum: {}", &tempered_batch_sum);
-            let _ = approx::relative_eq!(
-                batch_size as f32,
-                tempered_batch_sum,
-                epsilon = f32::EPSILON
-            );
-        }
-        Ok(())
-    }
+    // #[test]
+    // fn apply_temperature_to_logit_batch() -> Result<()> {
+    //     let setup = Setup::new()?;
+    //     let para_logits_processor = LogitsProcessor::from_sampling(
+    //         setup.seed,
+    //         generation::Sampling::All {
+    //             temperature: setup.temperature,
+    //         },
+    //     );
+    //     for batch_size in 1..5 {
+    //         let (logit_batch, _) = setup.get_logit_batch(Some(batch_size))?;
+    //         let tempered_batch =
+    //             para_logits_processor.apply_temperature(&logit_batch, setup.temperature)?;
+    //         let tempered_batch_sum: f32 = tempered_batch.sum((0, 1))?.to_scalar()?;
+    //         println!("tempered_batch_sum: {}", &tempered_batch_sum);
+    //         let _ = approx::relative_eq!(
+    //             batch_size as f32,
+    //             tempered_batch_sum,
+    //             epsilon = f32::EPSILON
+    //         );
+    //     }
+    //     Ok(())
+    // }
 
     fn process_logits(
         logit_batch: &Tensor,

@@ -1,9 +1,11 @@
+use super::prompt_config::PromptConfig;
 use uuid;
 
 #[derive(Debug)]
 pub struct Prompt {
     pub id: String,
     pub content: String,
+    pub config: PromptConfig,
 }
 
 impl Prompt {
@@ -17,6 +19,7 @@ impl From<String> for Prompt {
         Self {
             id: Prompt::gen_id(),
             content,
+            config: PromptConfig::default(),
         }
     }
 }

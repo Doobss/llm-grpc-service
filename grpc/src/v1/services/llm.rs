@@ -1,5 +1,5 @@
-use crate::services::v1::*;
-use std::{collections::HashMap, f32::consts::E, pin::Pin};
+use crate::v1::pb::v1::llm::service::*;
+use std::{collections::HashMap, pin::Pin};
 use tokio::sync::mpsc;
 use tokio_stream::{wrappers::ReceiverStream, Stream};
 use tonic::{Request, Response, Status};
@@ -13,10 +13,9 @@ pub struct LlmServer {
 }
 
 impl LlmServer {
-    pub fn new(model_type: ModelType, sampling: llm::Sampling) -> crate::Result<Self> {
+    pub fn new(model_type: ModelType) -> crate::Result<Self> {
         Ok(Self {
-            generator: TextGenerator::new(model_type, sampling)
-                .expect("Error initializing text generation"),
+            generator: TextGenerator::new(model_type).expect("Error initializing text generation"),
         })
     }
 }
@@ -30,6 +29,7 @@ impl llm_server::Llm for LlmServer {
             "LlmServer::prompt client connected from: {:?}",
             req.remote_addr()
         );
+
         let (prompt_sender, mut prompt_receiver) = mpsc::channel(128);
         let (sender, receiver) = mpsc::channel(128);
         let start_generation = std::time::Instant::now();
@@ -54,11 +54,16 @@ impl llm_server::Llm for LlmServer {
             prompt_sender,
             request: req.into_inner().into(),
         };
+<<<<<<< HEAD:grpc/src/services/llm.rs
 
         if let Err(error) = self.generator
         .input_channel
         .send(generation_request)
         .await {
+=======
+        let result = self.generator.input_channel.send(generation_request).await;
+        if let Err(error) = result {
+>>>>>>> 6f8da75df16c01e091b845b4d165a2449d9d28c4:grpc/src/v1/services/llm.rs
             let error: crate::Error = error.into();
             return Err(error.into());
         }
@@ -68,9 +73,9 @@ impl llm_server::Llm for LlmServer {
     }
 }
 
-pub fn service(model_type: ModelType, sampling: llm::Sampling) -> llm_server::LlmServer<LlmServer> {
+pub fn service(model_type: ModelType) -> llm_server::LlmServer<LlmServer> {
     tracing::info!("Adding llm service");
-    let server = LlmServer::new(model_type, sampling).expect("Error loading llm service");
+    let server = LlmServer::new(model_type).expect("Error loading llm service");
     llm_server::LlmServer::new(server)
 }
 
@@ -81,6 +86,7 @@ struct PromptGenerationRequest {
     pub prompt_sender: mpsc::Sender<PromptReply>,
 }
 
+<<<<<<< HEAD:grpc/src/services/llm.rs
 impl From<PromptRequest> for llm::Prompt {
     fn from(value: PromptRequest) -> Self {
         Self {
@@ -100,18 +106,20 @@ impl From<llm::Prompt> for PromptRequest {
     }
 }
 
+=======
+>>>>>>> 6f8da75df16c01e091b845b4d165a2449d9d28c4:grpc/src/v1/services/llm.rs
 #[derive(Debug)]
 struct TextGenerator {
     input_channel: mpsc::Sender<PromptGenerationRequest>,
 }
 
 impl TextGenerator {
-    pub fn new(model_type: ModelType, sampling: llm::Sampling) -> crate::Result<Self> {
+    pub fn new(model_type: ModelType) -> crate::Result<Self> {
         let (input_channel, mut receiver) = mpsc::channel(128);
 
         tokio::task::spawn_blocking(move || {
             let mut text_generation =
-                TextGeneration::new(model_type, Some(sampling)).expect("loading text generator");
+                TextGeneration::new(model_type).expect("loading text generator");
             let mut output_channels = HashMap::new();
             tracing::info!("Model {:?} initialized.", model_type);
             let mut batch: Option<llm::BatchEncoding> = None;
@@ -177,7 +185,7 @@ impl TextGenerator {
                                             config: None,
                                             is_end_of_sequence,
                                         })
-                                        .expect("Error sending PromptReply")   
+                                        .expect("Error sending PromptReply")
                                 }
                             }
                         }

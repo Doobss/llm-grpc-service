@@ -1,5 +1,5 @@
 #[derive(Debug, Default, Clone)]
-pub struct Config {
+pub struct ModelConfig {
     pub seed: u64,
     pub temp: Option<f64>,
     pub top_p: Option<f64>,
@@ -8,4 +8,4 @@ pub struct Config {
     pub repeat_last_n: usize,
 }
 
-impl Config {}
+impl ModelConfig {}

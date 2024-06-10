@@ -1,4 +1,5 @@
-use crate::{models, Error, ModelFiles, Result};
+use super::ModelFiles;
+use crate::{Error, Result};
 use candle_core::Tensor;
 use candle_nn::VarBuilder;
 use candle_transformers;
@@ -34,8 +35,8 @@ impl ModelType {
 
 #[derive(Debug)]
 enum InnerModel {
-    Mistral(models::mistral::Model),
-    QuantizedMistral(models::quantized_mistral::Model),
+    Mistral(super::models::mistral::Model),
+    QuantizedMistral(super::models::quantized_mistral::Model),
 }
 
 #[derive(Debug)]
@@ -89,7 +90,7 @@ impl Model {
                 let vars = candle_transformers::quantized_var_builder::VarBuilder::from_gguf(
                     gguf_file, &device,
                 )?;
-                let model = models::quantized_mistral::Model::new(&config, vars)?;
+                let model = super::models::quantized_mistral::Model::new(&config, vars)?;
                 InnerModel::QuantizedMistral(model)
             }
             _ => {
@@ -97,7 +98,7 @@ impl Model {
                 tracing::debug!("Model config: {:?}", &config);
                 let vars =
                     unsafe { VarBuilder::from_mmaped_safetensors(&files.weights, dtype, &device)? };
-                let model = models::mistral::Model::new(&config, vars)?;
+                let model = super::models::mistral::Model::new(&config, vars)?;
                 InnerModel::Mistral(model)
             }
         };
