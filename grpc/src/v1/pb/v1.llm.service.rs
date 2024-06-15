@@ -69,6 +69,8 @@ pub struct PromptReply {
     pub config: ::core::option::Option<PromptConfig>,
     #[prost(message, optional, tag = "5")]
     pub meta: ::core::option::Option<PromptMetaData>,
+    #[prost(string, tag = "6")]
+    pub generated: ::prost::alloc::string::String,
 }
 /// Generated client implementations.
 pub mod llm_client {

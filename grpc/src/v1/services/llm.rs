@@ -88,6 +88,7 @@ impl From<llm::GenerationResult> for PromptReply {
             is_end_of_sequence,
             config: Some(config.into()),
             meta: None,
+            generated,
         }
     }
 }
