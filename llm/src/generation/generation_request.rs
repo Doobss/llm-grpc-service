@@ -1,9 +1,9 @@
 extern crate tokio; // Should decople from tokio in future.
 
-use super::{GenerationLogitsProcessor, GenerationReply};
+use super::{GenerationLogitsProcessor, GenerationResult};
 use crate::{Prompt, PromptConfig};
 
-pub type GenerationReplySender = tokio::sync::mpsc::Sender<GenerationReply>;
+pub type GenerationResultSender = tokio::sync::mpsc::Sender<GenerationResult>;
 
 #[derive(Debug)]
 pub struct GenerationRequest {
@@ -11,12 +11,12 @@ pub struct GenerationRequest {
     pub content: String,
     pub generated: String,
     pub config: PromptConfig,
-    pub reply_sender: GenerationReplySender,
+    pub reply_sender: GenerationResultSender,
     pub logit: GenerationLogitsProcessor,
 }
 
 impl GenerationRequest {
-    pub fn from_prompt(prompt: Prompt, reply_sender: GenerationReplySender) -> Self {
+    pub fn from_prompt(prompt: Prompt, reply_sender: GenerationResultSender) -> Self {
         let Prompt {
             id,
             content,
@@ -29,7 +29,7 @@ impl GenerationRequest {
             config,
             reply_sender,
             logit,
-            generated: String::new()
+            generated: String::new(),
         }
     }
 }

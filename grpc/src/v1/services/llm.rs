@@ -1,5 +1,5 @@
 use crate::v1::pb::v1::llm::service::*;
-use std::{collections::HashMap, pin::Pin};
+use std::pin::Pin;
 use tokio::sync::mpsc;
 use tokio_stream::{wrappers::ReceiverStream, Stream};
 use tonic::{Request, Response, Status};
@@ -9,13 +9,15 @@ type ResponseStream = Pin<Box<dyn Stream<Item = Result<PromptReply, Status>> + S
 
 #[derive(Debug)]
 pub struct LlmServer {
-    generator: TextGenerator,
+    generator: llm::Generator,
 }
 
 impl LlmServer {
-    pub fn new(model_type: ModelType) -> crate::Result<Self> {
+    pub async fn new(model_type: llm::ModelType) -> crate::Result<Self> {
         Ok(Self {
-            generator: TextGenerator::new(model_type).expect("Error initializing text generation"),
+            generator: llm::Generator::from_model_type(model_type)
+                .await
+                .expect("Error initializing text generation"),
         })
     }
 }
@@ -30,171 +32,85 @@ impl llm_server::Llm for LlmServer {
             req.remote_addr()
         );
 
-        let (prompt_sender, mut prompt_receiver) = mpsc::channel(128);
-        let (sender, receiver) = mpsc::channel(128);
-        let start_generation = std::time::Instant::now();
-        tokio::spawn(async move {
-            while let Some(item) = prompt_receiver.recv().await {
-                match sender.send(Result::<_, Status>::Ok(item)).await {
-                    Ok(_) => (),
-                    Err(_item) => {
-                        // output_stream was build from receiver and both are dropped
-                        break;
-                    }
-                }
+        match self.generator.prompt(req.into_inner().into()).await {
+            Err(error) => {
+                let error: crate::Error = error.into();
+                return Err(error.into());
             }
-            let generation_duration = start_generation.elapsed();
-            tracing::info!(
-                "client disconnected generation_duration: {:?} ms",
-                generation_duration.as_millis()
-            );
-        });
+            Ok(mut result_receiver) => {
+                let (prompt_sender, prompt_receiver) = mpsc::channel(128);
+                let start_generation = std::time::Instant::now();
+                tokio::spawn(async move {
+                    while let Some(item) = result_receiver.recv().await {
+                        let item: PromptReply = item.into();
+                        match prompt_sender.send(Result::<_, Status>::Ok(item)).await {
+                            Ok(_) => (),
+                            Err(_item) => {
+                                // output_stream was build from receiver and both are dropped
+                                break;
+                            }
+                        }
+                    }
+                    let generation_duration = start_generation.elapsed();
+                    tracing::info!(
+                        "client disconnected generation_duration: {:?} ms",
+                        generation_duration.as_millis()
+                    );
+                });
 
-        let generation_request = PromptGenerationRequest {
-            prompt_sender,
-            request: req.into_inner().into(),
-        };
-        let result = self.generator.input_channel.send(generation_request).await;
-        if let Err(error) = result {
-            let error: crate::Error = error.into();
-            return Err(error.into());
+                let output_stream = ReceiverStream::new(prompt_receiver);
+                Ok(Response::new(Box::pin(output_stream) as Self::promptStream))
+            }
         }
-
-        let output_stream = ReceiverStream::new(receiver);
-        Ok(Response::new(Box::pin(output_stream) as Self::promptStream))
     }
 }
 
-pub fn service(model_type: ModelType) -> llm_server::LlmServer<LlmServer> {
+pub async fn service(model_type: llm::ModelType) -> llm_server::LlmServer<LlmServer> {
     tracing::info!("Adding llm service");
-    let server = LlmServer::new(model_type).expect("Error loading llm service");
+    let server = LlmServer::new(model_type)
+        .await
+        .expect("Error loading llm service");
     llm_server::LlmServer::new(server)
 }
 
-use llm::{ModelType, Prompt, TextGeneration};
-
-struct PromptGenerationRequest {
-    pub request: Prompt,
-    pub prompt_sender: mpsc::Sender<PromptReply>,
+impl From<llm::GenerationResult> for PromptReply {
+    fn from(value: llm::GenerationResult) -> Self {
+        let llm::GenerationResult {
+            id,
+            is_end_of_sequence,
+            config,
+            content,
+            generated,
+        } = value;
+        Self {
+            id,
+            content,
+            is_end_of_sequence,
+            config: Some(config.into()),
+            meta: None,
+        }
+    }
 }
 
-#[derive(Debug)]
-struct TextGenerator {
-    input_channel: mpsc::Sender<PromptGenerationRequest>,
-}
-
-impl TextGenerator {
-    pub fn new(model_type: ModelType) -> crate::Result<Self> {
-        let (input_channel, mut receiver) = mpsc::channel(128);
-
-        tokio::task::spawn_blocking(move || {
-            let mut text_generation =
-                TextGeneration::new(model_type).expect("loading text generator");
-            let mut output_channels = HashMap::new();
-            tracing::info!("Model {:?} initialized.", model_type);
-            let mut batch: Option<llm::BatchEncoding> = None;
-            let token_chunk_length = 2;
-            let mut current_token = 0;
-            loop {
-                if !receiver.is_empty() {
-                    tracing::debug!("Picking up model input");
-                    let mut prompts = Vec::new();
-                    while !receiver.is_empty() {
-                        let prompt: PromptGenerationRequest = receiver
-                            .blocking_recv()
-                            .expect("Input channel to model closed");
-                        output_channels.insert(prompt.request.id.clone(), prompt.prompt_sender);
-                        prompts.push(prompt.request)
-                    }
-                    let new_batch = text_generation
-                        .tokenizer
-                        .encode_batch(prompts, true)
-                        .expect("Error encoding batch");
-                    match batch {
-                        Some(ref mut current_batch) => current_batch
-                            .merge_batch(new_batch)
-                            .expect("Error merging batches"),
-                        None => batch = Some(new_batch),
-                    }
-                } else if let Some(mut next_batch) = batch {
-                    current_token += 1;
-                    if current_token == token_chunk_length {
-                        tracing::debug!("Generating batch: {:?}", &next_batch);
-                    }
-                    let start_generation = std::time::Instant::now();
-                    let next_tokens = text_generation.next(&next_batch).expect("Error generating");
-                    let generation_duration = start_generation.elapsed();
-
-                    let start_token_decode = std::time::Instant::now();
-                    let is_end_of_sequence =
-                        llm::get_eos_tokens(&next_tokens, text_generation.tokenizer.eos_id)
-                            .expect("Error getting eos tokens");
-
-                    next_batch
-                        .append_tokens(&next_tokens)
-                        .expect("Error appending tokens");
-
-                    let decoded = text_generation
-                        .tokenizer
-                        .decode_batch(&next_batch)
-                        .expect("Error decoding tokens");
-                    let decoding_duration = start_token_decode.elapsed();
-
-                    let start_sending_results = std::time::Instant::now();
-                    for (index, decoded_tokens) in decoded.iter().enumerate() {
-                        let is_end_of_sequence = is_end_of_sequence[index] == 1;
-                        if token_chunk_length == current_token || is_end_of_sequence {
-                            let output_channel = output_channels.get(&next_batch.keys[index]);
-                            if let Some(channel) = output_channel {
-                                if !channel.is_closed() {
-                                    channel
-                                        .blocking_send(PromptReply {
-                                            id: next_batch.keys[index].clone(),
-                                            content: decoded_tokens.to_owned(),
-                                            meta: None,
-                                            config: None,
-                                            is_end_of_sequence,
-                                        })
-                                        .expect("Error sending PromptReply")
-                                }
-                            }
-                        }
-                        if is_end_of_sequence {
-                            output_channels
-                                .remove(&next_batch.keys[index])
-                                .expect("Error removing channel");
-                        }
-                    }
-                    let sending_results_duration = start_sending_results.elapsed();
-                    tracing::info!(
-                        "generation_duration: {:?} ms | decoding_duration: {:?} ms | sending_results_duration: {:?} ms",
-                        generation_duration.as_millis(),
-                        decoding_duration.as_millis(),
-                        sending_results_duration.as_millis()
-                    );
-
-                    if current_token == token_chunk_length {
-                        current_token = 0;
-                    }
-                    if output_channels.keys().len() > 0 {
-                        batch = Some(next_batch)
-                    } else {
-                        batch = None
-                    }
-                } else {
-                    tracing::debug!("Waiting for model input");
-                    let prompt: PromptGenerationRequest = receiver
-                        .blocking_recv()
-                        .expect("Input channel to model closed");
-                    output_channels.insert(prompt.request.id.clone(), prompt.prompt_sender);
-                    let new_batch = text_generation
-                        .tokenizer
-                        .encode_batch(vec![prompt.request], true)
-                        .expect("Error encoding batch");
-                    batch = Some(new_batch)
-                }
-            }
-        });
-        Ok(Self { input_channel })
+impl From<llm::PromptConfig> for PromptConfig {
+    fn from(value: llm::PromptConfig) -> Self {
+        let llm::PromptConfig {
+            max_new_tokens,
+            num_beams,
+            temperature,
+            top_k,
+            top_p,
+            repetition_penalty,
+            seed,
+        } = value;
+        Self {
+            max_new_tokens: max_new_tokens.unwrap_or_default(),
+            num_beams: num_beams.unwrap_or_default(),
+            temperature: temperature.unwrap_or_default() as f32,
+            top_k: top_k.unwrap_or_default() as i32,
+            top_p: top_p.unwrap_or_default() as f32,
+            repetition_penalty: repetition_penalty.unwrap_or_default(),
+            seed: seed as i64,
+        }
     }
 }

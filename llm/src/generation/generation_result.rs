@@ -1,7 +1,7 @@
 use crate::PromptConfig;
 
 #[derive(Debug)]
-pub struct GenerationReply {
+pub struct GenerationResult {
     pub id: String,
     pub content: String,
     pub generated: String,
@@ -9,4 +9,4 @@ pub struct GenerationReply {
     pub config: PromptConfig,
 }
 
-impl GenerationReply {}
+impl GenerationResult {}

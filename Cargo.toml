@@ -14,10 +14,18 @@ documentation = ""
 
 [workspace.dependencies]
 approx = "*"
-candle-core = { git = "https://github.com/huggingface/candle.git", version = "0.5.1", features = [] }
-candle-examples = { git = "https://github.com/huggingface/candle.git", features = [] }
-candle-nn = { git = "https://github.com/huggingface/candle.git", features = [] }
-candle-transformers = { git = "https://github.com/huggingface/candle.git", features = [] }
+candle-core = { git = "https://github.com/huggingface/candle.git", version = "0.5.1", features = [
+    "cuda",
+] }
+candle-examples = { git = "https://github.com/huggingface/candle.git", features = [
+    "cuda",
+] }
+candle-nn = { git = "https://github.com/huggingface/candle.git", features = [
+    "cuda",
+] }
+candle-transformers = { git = "https://github.com/huggingface/candle.git", features = [
+    "cuda",
+] }
 clap = { version = "4.2.4", features = ["derive"] }
 grpc = { path = './grpc' }
 hf-hub = "0.3.0"

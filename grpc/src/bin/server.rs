@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("Starting server");
     Server::builder()
         .add_service(v1::services::spec_service()?)
-        .add_service(v1::services::llm::service(args.model))
+        .add_service(v1::services::llm::service(args.model).await)
         .serve("[::]:50051".to_socket_addrs().unwrap().next().unwrap())
         .await
         .unwrap();
