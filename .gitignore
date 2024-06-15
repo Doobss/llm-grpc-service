@@ -12,3 +12,4 @@ vcpkg
 config.toml
 .cache
 cache
+*.bin

@@ -21,10 +21,13 @@ impl Tokenize {
             loop {
                 tracing::debug!("tokenize_task: awaiting batches");
                 if let Some(generation_batch) = generation_batch_receiver.blocking_recv() {
+                    let loop_start = tokio::time::Instant::now();
                     let tokenized_batch =
                         TokenizedBatch::from_generation_batch(generation_batch, tokenizer)?;
                     tracing::debug!("tokenize_task: sending batch {:?}", &tokenized_batch);
                     tokenized_batch_sender.blocking_send(tokenized_batch)?;
+                    let loop_end = loop_start.elapsed().as_micros();
+                    tracing::debug!("tokenize task finished in: {:?} micro seconds", loop_end);
                 }
             }
         })

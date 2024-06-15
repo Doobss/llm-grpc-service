@@ -1,4 +1,6 @@
 extern crate tokio;
+use candle_core::cuda::cudarc::cublaslt::result;
+
 use super::{GenerationBatch, GenerationRequest, GenerationResult, TextGeneration};
 use crate::{tasks, GenerationStep, ModelType, Prompt, Result, TokenizedBatch};
 use std::sync::Arc;
@@ -42,40 +44,44 @@ impl Generator {
         let mut generation_task = generation_task.task();
         let mut decode_task = decode_task.task();
 
-        tokio::select! {
-            _ = (&mut batch_task) => {
-                if let Err(error) = batch_task.await {
-                    tracing::error!("Error in batch task, aborting all other tasks. {:?}", error);
-                }
-                tokenize_task.abort();
-                generation_task.abort();
-                decode_task.abort();
-            },
-            _ = (&mut tokenize_task) => {
-                if let Err(error) = tokenize_task.await {
-                    tracing::error!("Error in tokenize task, aborting all other tasks. {:?}", error);
-                }
-                batch_task.abort();
-                generation_task.abort();
-                decode_task.abort();
-            },
-            _ = (&mut generation_task) => {
-                if let Err(error) = generation_task.await {
-                    tracing::error!("Error in generation task, aborting all other tasks. {:?}", error);
-                }
-                batch_task.abort();
-                tokenize_task.abort();
-                decode_task.abort();
-            },
-            _ = (&mut decode_task) => {
-                if let Err(error) = decode_task.await {
-                    tracing::error!("Error in decode task, aborting all other tasks. {:?}", error);
-                }
-                batch_task.abort();
-                tokenize_task.abort();
-                generation_task.abort();
-            },
-        }
+        tokio::spawn(async move {
+            tokio::select! {
+                result = (&mut batch_task) => {
+                    if let Err(error) = result {
+                        tracing::error!("Error in batch task, aborting all other tasks. {:?}", error);
+                    }
+                    // tokenize_task.abort();
+                    // generation_task.abort();
+                    // decode_task.abort();
+                },
+                result = (&mut tokenize_task) => {
+                    if let Err(error) = result {
+                        tracing::error!("Error in tokenize task, aborting all other tasks. {:?}", error);
+                    }
+                    // batch_task.abort();
+                    // generation_task.abort();
+                    // decode_task.abort();
+                },
+                result = (&mut generation_task) => {
+                    if let Err(error) = result {
+                        tracing::error!("Error in generation task, aborting all other tasks. {:?}", error);
+                    }
+                    // batch_task.abort();
+                    // tokenize_task.abort();
+                    // decode_task.abort();
+                },
+                result = (&mut decode_task) => {
+                    if let Err(error) = result {
+                        tracing::error!("Error in decode task, aborting all other tasks. {:?}", error);
+                    }
+                    // batch_task.abort();
+                    // tokenize_task.abort();
+                    // generation_task.abort();
+                },
+            }
+        });
+
+        tracing::debug!("All generator tasks setup.");
         Self { request_sender }
     }
 

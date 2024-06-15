@@ -12,7 +12,7 @@ pub struct GenerationRequest {
     pub generated: String,
     pub config: PromptConfig,
     pub reply_sender: GenerationResultSender,
-    pub logit: GenerationLogitsProcessor,
+    logit: GenerationLogitsProcessor,
 }
 
 impl GenerationRequest {
@@ -31,5 +31,15 @@ impl GenerationRequest {
             logit,
             generated: String::new(),
         }
+    }
+}
+
+impl GenerationRequest {
+    pub fn sender(&self) -> &GenerationResultSender {
+        &self.reply_sender
+    }
+
+    pub fn logit_processor(&self) -> GenerationLogitsProcessor {
+        GenerationLogitsProcessor::from_prompt_config(&self.config)
     }
 }

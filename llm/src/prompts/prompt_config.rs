@@ -1,4 +1,4 @@
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct PromptConfig {
     pub max_new_tokens: Option<i32>,
     pub num_beams: Option<i32>,

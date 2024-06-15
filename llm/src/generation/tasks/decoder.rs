@@ -1,5 +1,12 @@
+use std::os::unix::process;
+
+use candle_core::{IndexOp, Tensor};
+use indexmap::IndexMap;
+
 use super::{Receiver, Sender, TaskResult};
-use crate::{GenerationStep, TokenizedBatch, Tokenizer};
+use crate::{
+    GenerationLogitsProcessor, GenerationResult, GenerationStep, TokenizedBatch, Tokenizer,
+};
 
 #[derive(Debug)]
 pub struct Decoder {
@@ -15,29 +22,151 @@ impl Decoder {
             tokenized_batch_sender,
             mut generation_result_receiver,
         } = self;
-        tokio::task::spawn_blocking(move || loop {
-            tracing::debug!("decode_task: awaiting results");
-            if let Some(generation_result) = generation_result_receiver.blocking_recv() {
-                let GenerationStep { batch, logits } = generation_result;
-                let TokenizedBatch {
-                    requests,
-                    input_ids,
-                    attention_mask,
-                    past_key_values,
-                } = batch;
-                let mut indicies_to_keep = Vec::new();
-                let end_of_sequence_tokens = crate::get_eos_tokens(&logits, tokenizer.eos_id)?;
+        tokio::task::spawn_blocking(move || {
+            let tokenizer = tokenizer.as_ref();
+            loop {
+                tracing::debug!("decode_task: awaiting results");
+                if let Some(generation_result) = generation_result_receiver.blocking_recv() {
+                    let loop_start = tokio::time::Instant::now();
 
-                for (index, request) in requests.values().enumerate() {
-                    let is_end_of_sequence = if let Some(value) = end_of_sequence_tokens.get(index)
-                    {
-                        *value == 1
-                    } else {
-                        false
-                    };
-                    if !is_end_of_sequence {
-                        indicies_to_keep.push(index);
+                    let GenerationStep { batch, logits } = generation_result;
+                    let TokenizedBatch {
+                        requests,
+                        input_ids,
+                        attention_mask,
+                        past_key_values,
+                    } = batch;
+                    struct ProcessedToken {
+                        pub token_id: u32,
+                        pub is_end_of_sequence: bool,
                     }
+                    // Below is a very expensive op. Around 30_000 micro secs (like 99% of the total time for this task)
+                    let mut token_ids = input_ids.to_vec2::<u32>()?;
+                    let mut processed_tokens = Vec::with_capacity(requests.len());
+
+                    for (index, request) in requests.values().enumerate() {
+                        let logit_row = logits.i(index)?.squeeze(0)?;
+                        let GenerationLogitsProcessor {
+                            preprocess: _,
+                            mut process,
+                        } = request.logit_processor();
+                        let token_id = process.sample(&logit_row).expect("Errror sampling");
+                        let is_end_of_sequence = token_id == tokenizer.eos_id;
+                        processed_tokens.push(ProcessedToken {
+                            token_id,
+                            is_end_of_sequence,
+                        });
+                        token_ids[index].push(token_id);
+                    }
+                    tracing::debug!("elapesd 2: {:?}", loop_start.elapsed().as_micros());
+                    let process_time = loop_start.elapsed();
+
+                    let decoded_text = tokenizer
+                        .batch_decode(&token_ids, true)
+                        .expect("Error batch decode");
+
+                    let mut indicies_to_keep = Vec::new();
+                    let mut kept_requests = IndexMap::new();
+                    let iterator = requests
+                        .into_values()
+                        .zip(processed_tokens)
+                        .zip(decoded_text)
+                        .enumerate();
+
+                    let decode_time = loop_start.elapsed();
+
+                    for (index, ((request, processed), generated)) in iterator {
+                        let ProcessedToken {
+                            token_id,
+                            mut is_end_of_sequence,
+                        } = processed;
+                        if request.sender().is_closed() {
+                            is_end_of_sequence = true
+                        } else {
+                            request.sender().blocking_send(GenerationResult {
+                                id: request.id.clone(),
+                                content: generated.clone(),
+                                generated: tokenizer.id_to_token(token_id).unwrap_or_default(),
+                                is_end_of_sequence,
+                                config: request.config.clone(),
+                            })?;
+                        }
+                        if !is_end_of_sequence {
+                            indicies_to_keep.push(index as u32);
+                            kept_requests.insert(request.id.clone(), request);
+                        }
+                    }
+                    let send_time = loop_start.elapsed();
+
+                    let device = input_ids.device();
+                    let num_indicies = indicies_to_keep.len();
+                    let indicies_to_keep =
+                        Tensor::from_vec(indicies_to_keep, num_indicies, device)?;
+                    let input_ids_shape = input_ids.dims();
+                    let token_ids = token_ids.into_iter().fold(Vec::new(), |mut vec, tokens| {
+                        vec.extend(tokens);
+                        vec
+                    });
+
+                    let input_ids = Tensor::from_vec(
+                        token_ids,
+                        (input_ids_shape[0], input_ids_shape[1] + 1),
+                        device,
+                    )
+                    .unwrap_or_else(|error| {
+                        panic!(
+                            "Error creating new input ids {:?} error: {:?}",
+                            &input_ids_shape, error
+                        )
+                    });
+
+                    let input_ids =
+                        input_ids
+                            .index_select(&indicies_to_keep, 0)
+                            .unwrap_or_else(|error| {
+                                panic!(
+                                    "Error selecting new input ids {:?} error: {:?}",
+                                    &indicies_to_keep, error
+                                )
+                            });
+                    let added_attention =
+                        Tensor::ones((input_ids_shape[0], 1), attention_mask.dtype(), device)
+                            .unwrap_or_else(|error| {
+                                panic!("Error creating added attention: {:?}", error)
+                            });
+
+                    let attention_mask = Tensor::cat(&[&attention_mask, &added_attention], 1)
+                        .unwrap_or_else(|error| {
+                            panic!("Error cating added attention: {:?}", error)
+                        });
+                    let attention_mask = attention_mask.index_select(&indicies_to_keep, 0)?;
+                    let past_key_values = if let Some(past_key_values) = past_key_values {
+                        Some(past_key_values.index_select(&indicies_to_keep, 0)?)
+                    } else {
+                        None
+                    };
+
+                    let filter_time = loop_start.elapsed();
+
+                    let next_batch = TokenizedBatch {
+                        requests: kept_requests,
+                        input_ids,
+                        attention_mask,
+                        past_key_values,
+                    };
+                    if !next_batch.is_empty() {
+                        tracing::debug!(
+                            "decode_task: sending non finished batch back to generation."
+                        );
+                        tokenized_batch_sender.blocking_send(next_batch)?;
+                    }
+                    let loop_end = loop_start.elapsed().as_micros();
+                    let process_time = process_time.as_micros();
+                    let decode_time = decode_time.as_micros() - process_time;
+                    let send_time = send_time.as_micros() - (decode_time + process_time);
+                    let filter_time =
+                        filter_time.as_micros() - (send_time + decode_time + process_time);
+                    tracing::debug!("decoder task finished in: {:?} micro seconds | process: {:?} ms | decode: {:?} ms | send: {:?} ms | filter: {:?} ms", loop_end, process_time, decode_time, send_time, filter_time);
                 }
             }
         })

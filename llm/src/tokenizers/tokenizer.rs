@@ -81,6 +81,10 @@ impl Tokenizer {
     pub fn get_token(&self, token_s: &str) -> Option<u32> {
         self.inner.get_vocab(true).get(token_s).copied()
     }
+
+    pub fn id_to_token(&self, token_id: u32) -> Option<String> {
+        self.inner.id_to_token(token_id)
+    }
 }
 
 impl Tokenizer {

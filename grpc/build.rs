@@ -1,8 +1,6 @@
-use std::{env, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let tonic_out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-
     let v1_out_dir = PathBuf::from("src/v1/pb");
     let v1_proto_files = ["protos/v1/llm/service.proto"];
 
@@ -11,7 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     tonic_build::configure()
         .build_client(true)
         .build_server(true)
-        .file_descriptor_set_path(tonic_out_dir.join("v1_service_descriptor.bin"))
+        .file_descriptor_set_path(v1_out_dir.join("v1_service_descriptor.bin"))
         .out_dir(v1_out_dir)
         .include_file("mod.rs")
         .compile(&v1_proto_files, &["protos"])?;
