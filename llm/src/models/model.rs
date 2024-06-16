@@ -1,9 +1,7 @@
 use super::ModelFiles;
-use crate::{Error, GenerationBatch, Result, TokenizedBatch};
+use crate::{ModelResult, TokenizedBatch};
 use candle_core::Tensor;
 use candle_nn::VarBuilder;
-use candle_transformers;
-use clap;
 use hf_hub::{api, api::sync::ApiRepo, Repo, RepoType};
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, clap::ValueEnum)]
@@ -28,6 +26,10 @@ impl ModelType {
         }
     }
 
+    pub fn id(&self) -> String {
+        self.path()
+    }
+
     pub fn is_quantized(self) -> bool {
         self == ModelType::QuantizedMistral7bV01
     }
@@ -47,7 +49,7 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn forward(&mut self, batch: &TokenizedBatch) -> Result<Tensor> {
+    pub fn forward(&mut self, batch: &TokenizedBatch) -> ModelResult<Tensor> {
         match &mut self.inner {
             InnerModel::Mistral(model) => Ok(model
                 .forward_with_attention(&batch.input_ids, &batch.attention_mask, 0)
@@ -60,7 +62,7 @@ impl Model {
 }
 
 impl Model {
-    pub fn load(model_type: ModelType) -> Result<Self> {
+    pub fn load(model_type: ModelType) -> ModelResult<Self> {
         let api = api::sync::ApiBuilder::new()
             .with_cache_dir("./.cache/huggingface".into())
             .with_token(Some("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".to_owned()))
@@ -75,7 +77,7 @@ impl Model {
         Self::from_repo(model_type, &repo)
     }
 
-    pub fn from_files(files: ModelFiles) -> Result<Self> {
+    pub fn from_files(files: ModelFiles) -> ModelResult<Self> {
         let device = Model::init_device()?;
         let dtype = Model::init_dtype()?;
         let inner = match files.model_type {
@@ -109,16 +111,16 @@ impl Model {
         })
     }
 
-    pub fn from_repo(model_type: ModelType, repo: &ApiRepo) -> Result<Self> {
+    pub fn from_repo(model_type: ModelType, repo: &ApiRepo) -> ModelResult<Self> {
         let tokenizer_files = ModelFiles::from_repo(model_type, repo)?;
         Self::from_files(tokenizer_files)
     }
 
-    pub fn init_device() -> Result<candle_core::Device> {
-        candle_examples::device(false).map_err(Error::CandleError)
+    pub fn init_device() -> ModelResult<candle_core::Device> {
+        Ok(candle_examples::device(false)?)
     }
 
-    pub fn init_dtype() -> Result<candle_core::DType> {
+    pub fn init_dtype() -> ModelResult<candle_core::DType> {
         let device = Model::init_device()?;
         if device.is_cuda() {
             Ok(candle_core::DType::BF16)

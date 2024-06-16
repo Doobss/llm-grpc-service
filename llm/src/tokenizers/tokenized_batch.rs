@@ -1,4 +1,4 @@
-use crate::{BatchEncoding, GenerationBatch, GenerationRequest, Result, Tokenizer};
+use crate::{BatchEncoding, GenerationBatch, GenerationRequest, Tokenizer, TokenizerResult};
 use candle_core::Tensor;
 use indexmap::IndexMap;
 
@@ -11,7 +11,10 @@ pub struct TokenizedBatch {
 }
 
 impl TokenizedBatch {
-    pub fn from_generation_batch(batch: GenerationBatch, tokenizer: &Tokenizer) -> Result<Self> {
+    pub fn from_generation_batch(
+        batch: GenerationBatch,
+        tokenizer: &Tokenizer,
+    ) -> TokenizerResult<Self> {
         let mut prompts: Vec<&str> = Vec::with_capacity(batch.len());
         let GenerationBatch { requests } = batch;
         for request in requests.values() {

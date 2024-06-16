@@ -1,5 +1,4 @@
 extern crate tokio;
-use candle_core::cuda::cudarc::cublaslt::result;
 
 use super::{GenerationBatch, GenerationRequest, GenerationResult, TextGeneration};
 use crate::{tasks, GenerationStep, ModelType, Prompt, Result, TokenizedBatch};

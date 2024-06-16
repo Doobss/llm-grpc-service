@@ -42,6 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Server::builder()
         .add_service(v1::services::spec_service()?)
         .add_service(v1::services::llm::service(args.model).await)
+        .add_service(v1::services::prompt::service(args.model))
         .serve("[::]:50051".to_socket_addrs().unwrap().next().unwrap())
         .await
         .unwrap();

@@ -8,10 +8,7 @@ pub struct TextGeneration {
 
 impl TextGeneration {
     pub fn next_token(&mut self, batch: &TokenizedBatch) -> Result<Tensor> {
-        let logits = self
-            .model
-            .forward(&batch)?
-            .squeeze(1)?;
+        let logits = self.model.forward(batch)?.squeeze(1)?;
         Ok(logits)
     }
 }

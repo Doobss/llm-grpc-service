@@ -5,4 +5,9 @@ pub mod v1 {
             include!("v1.llm.service.rs");
         }
     }
+    pub mod prompt {
+        pub mod service {
+            include!("v1.prompt.service.rs");
+        }
+    }
 }

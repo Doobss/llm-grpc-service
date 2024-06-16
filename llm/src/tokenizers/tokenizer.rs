@@ -1,20 +1,25 @@
+use super::template::ChatTemplate;
 use super::tokenizer_files::TokenizerFiles;
+use super::{BatchEncoding, TokenizerError, TokenizerResult};
 use crate::models::ModelType;
-use crate::prompts::Prompt;
-use crate::{BatchEncoding, Error, Result};
 use candle_core::Tensor;
 use candle_examples::device as get_device;
+use clap::builder::Str;
 use hf_hub::{api, api::sync::ApiRepo, Repo, RepoType};
 use huggingface_tokenizers::{PaddingDirection, PaddingParams, PaddingStrategy};
-use serde_json;
 
 #[derive(Debug)]
 pub struct Tokenizer {
     inner: tokenizers::Tokenizer,
     padding: tokenizers::PaddingParams,
+    pub template: Option<ChatTemplate>,
     pub pad_id: u32,
     pub bos_id: u32,
     pub eos_id: u32,
+
+    pub pad_token: String,
+    pub bos_token: String,
+    pub eos_token: String,
 }
 
 impl Tokenizer {
@@ -22,7 +27,7 @@ impl Tokenizer {
         &self,
         prompts: Vec<&str>,
         add_special_tokens: bool,
-    ) -> Result<BatchEncoding> {
+    ) -> TokenizerResult<BatchEncoding> {
         let encodings = match self.inner.encode_batch(prompts, add_special_tokens) {
             Ok(mut batch) => {
                 if self.inner.get_padding().is_none() {
@@ -30,7 +35,7 @@ impl Tokenizer {
                 }
                 Ok(batch)
             }
-            Err(error) => Err(Error::TokenizerError(error)),
+            Err(error) => Err(TokenizerError::TokenizerError(error)),
         }?;
 
         let mut ids: Vec<&[u32]> = Vec::new();
@@ -65,7 +70,7 @@ impl Tokenizer {
         &self,
         token_ids: &Vec<Vec<u32>>,
         skip_special_tokens: bool,
-    ) -> Result<Vec<String>> {
+    ) -> TokenizerResult<Vec<String>> {
         let mut token_refs: Vec<&[u32]> = Vec::with_capacity(token_ids.len());
         for token_ref in token_ids {
             token_refs.push(token_ref);
@@ -73,7 +78,7 @@ impl Tokenizer {
         Ok(self.inner.decode_batch(&token_refs, skip_special_tokens)?)
     }
 
-    pub fn decode_batch(&self, batch: &BatchEncoding) -> Result<Vec<String>> {
+    pub fn decode_batch(&self, batch: &BatchEncoding) -> TokenizerResult<Vec<String>> {
         let next_tokens_vec: Vec<Vec<u32>> = batch.ids.to_vec2()?;
         self.batch_decode(&next_tokens_vec, true)
     }
@@ -88,7 +93,7 @@ impl Tokenizer {
 }
 
 impl Tokenizer {
-    pub fn from_files(files: TokenizerFiles) -> Result<Self> {
+    pub fn from_files(files: TokenizerFiles) -> TokenizerResult<Self> {
         tracing::debug!("loading tokenizer config: {:?}", &files.config);
 
         let config = files.load_config::<serde_json::Value>()?;
@@ -131,6 +136,19 @@ impl Tokenizer {
         let pad_id = tokenizer.encode(pad_token.clone(), false)?.get_ids()[0];
         let bos_id = tokenizer.encode(bos_token.clone(), false)?.get_ids()[0];
         let eos_id = tokenizer.encode(eos_token.clone(), false)?.get_ids()[0];
+
+        let chat_template: Option<ChatTemplate> = match config.get("chat_template") {
+            Some(value) => value.as_str().map(|value| {
+                ChatTemplate::new(
+                    value.to_owned(),
+                    Some(bos_token.clone()),
+                    Some(eos_token.clone()),
+                )
+            }),
+            None => None,
+        };
+        tracing::debug!("tokenizer chat_template: {:?}", &chat_template);
+
         if tokenizer.get_vocab(true).get(&pad_token).is_none() {
             tracing::debug!(
                 "Pad token {:?} not found in vocab, adding token.",
@@ -146,7 +164,7 @@ impl Tokenizer {
             }]);
         } else {
             tracing::debug!("Pad token {:?} found in vocab.", &pad_token);
-        }
+        };
         let pad_type_id = 0;
         tracing::debug!("tokenizer bos_token: {:?}", &bos_token);
         tracing::debug!("tokenizer bos_id: {:?}", &bos_id);
@@ -172,20 +190,24 @@ impl Tokenizer {
                 pad_to_multiple_of: None,
                 pad_id,
                 pad_type_id,
-                pad_token,
+                pad_token: pad_token.clone(),
             },
             pad_id,
             bos_id,
             eos_id,
+            bos_token,
+            eos_token,
+            pad_token,
+            template: chat_template,
         })
     }
 
-    pub fn from_repo(repo: &ApiRepo) -> Result<Self> {
+    pub fn from_repo(repo: &ApiRepo) -> TokenizerResult<Self> {
         let tokenizer_files = TokenizerFiles::from_repo(repo)?;
         Self::from_files(tokenizer_files)
     }
 
-    pub fn load(model_type: ModelType) -> Result<Self> {
+    pub fn load(model_type: ModelType) -> TokenizerResult<Self> {
         let api = api::sync::ApiBuilder::new()
             .with_cache_dir("./.cache/huggingface".into())
             .with_token(Some("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".to_owned()))
@@ -201,27 +223,37 @@ impl Tokenizer {
     }
 }
 
+impl Tokenizer {
+    pub fn new_chat_template(&self, template: String) -> ChatTemplate {
+        ChatTemplate::new(
+            template,
+            Some(self.bos_token.clone()),
+            Some(self.eos_token.clone()),
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
-    use super::*;
+    // use super::*;
     // use approx;
     // use rand::{self, Rng, SeedableRng};
 
-    struct Setup {
-        // pub model_type: ModelType,
-        pub tokenizer: Tokenizer,
-    }
+    // struct Setup {
+    //     // pub model_type: ModelType,
+    //     pub tokenizer: Tokenizer,
+    // }
 
-    impl Setup {
-        fn new() -> Result<Self> {
-            let model_type = ModelType::Mistral7bInstructV02;
-            Ok(Self {
-                // model_type,
-                tokenizer: Tokenizer::load(model_type)?,
-            })
-        }
-    }
+    // impl Setup {
+    //     fn new() -> TokenizerResult<Self> {
+    //         let model_type = ModelType::Mistral7bInstructV02;
+    //         Ok(Self {
+    //             // model_type,
+    //             tokenizer: Tokenizer::load(model_type)?,
+    //         })
+    //     }
+    // }
 
     // #[test]
     // fn encode_prompts() -> Result<()> {

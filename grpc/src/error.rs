@@ -1,12 +1,11 @@
-use clap::error;
-use llm::Error as LlmError;
-
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    LlmError(#[from] LlmError),
+    LlmError(#[from] llm::Error),
+    #[error(transparent)]
+    TokenizerError(#[from] llm::TokenizerError),
     #[error(transparent)]
     AddrParseError(#[from] std::net::AddrParseError),
     #[error(transparent)]

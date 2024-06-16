@@ -1,4 +1,5 @@
 pub mod llm;
+pub mod prompt;
 
 use crate::v1;
 use crate::Result;

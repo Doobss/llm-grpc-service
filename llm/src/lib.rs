@@ -11,6 +11,8 @@ extern crate candle_nn;
 extern crate candle_transformers;
 extern crate clap;
 extern crate hf_hub;
+extern crate minijinja;
+extern crate minijinja_contrib;
 extern crate rand;
 extern crate serde;
 extern crate serde_json;

@@ -17,8 +17,6 @@ impl GenerationBatch {
             requests: mapped_requests,
         }
     }
-
-
 }
 
 impl GenerationBatch {
@@ -31,7 +29,7 @@ impl GenerationBatch {
     }
 
     pub fn get_requests(&self) -> Vec<&GenerationRequest> {
-        self.requests.values().map(|request| request).collect()
+        self.requests.values().collect()
     }
 
     pub fn get_prompts(&self) -> Vec<String> {

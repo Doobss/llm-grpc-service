@@ -12,7 +12,7 @@ pub struct GenerationRequest {
     pub generated: String,
     pub config: PromptConfig,
     pub reply_sender: GenerationResultSender,
-    logit: GenerationLogitsProcessor,
+    // logit: GenerationLogitsProcessor,
 }
 
 impl GenerationRequest {
@@ -22,13 +22,13 @@ impl GenerationRequest {
             content,
             config,
         } = prompt;
-        let logit = GenerationLogitsProcessor::from_prompt_config(&config);
+        // let logit = GenerationLogitsProcessor::from_prompt_config(&config);
         Self {
             id,
             content,
             config,
             reply_sender,
-            logit,
+            // logit,
             generated: String::new(),
         }
     }

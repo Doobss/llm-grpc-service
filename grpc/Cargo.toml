@@ -1,26 +1,26 @@
 [package]
 name = "grpc"
-version.workspace = true
-authors.workspace = true
-description.workspace = true
-documentation.workspace = true
-edition.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+description = { workspace = true }
+documentation = { workspace = true }
+edition = { workspace = true }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap.workspace = true
-llm.workspace = true
-tonic.workspace = true
-tonic-health.workspace = true
-tonic-reflection.workspace = true
-tokio.workspace = true
-tokio-stream.workspace = true
-tracing.workspace = true
-tracing-subscriber.workspace = true
-prost.workspace = true
-thiserror.workspace = true
-uuid.workspace = true
-rand.workspace = true
+clap = { workspace = true }
+llm = { workspace = true }
+tonic = { workspace = true }
+tonic-health = { workspace = true }
+tonic-reflection = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+prost = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+rand = { workspace = true }
 
 [build-dependencies]
-tonic-build.workspace = true
+tonic-build = { workspace = true }

@@ -1,5 +1,5 @@
 use super::ModelType;
-use crate::{utils, Result};
+use crate::ModelResult;
 use candle_examples::hub_load_safetensors;
 use hf_hub::api::sync::ApiRepo;
 use std::path::PathBuf;
@@ -14,7 +14,7 @@ pub struct ModelFiles {
 }
 
 impl ModelFiles {
-    pub fn from_repo(model_type: ModelType, repo: &ApiRepo) -> Result<Self> {
+    pub fn from_repo(model_type: ModelType, repo: &ApiRepo) -> ModelResult<Self> {
         let config = repo.get("config.json")?;
         let generation_config = match repo.get("generation_config.json") {
             Ok(config_path) => Some(config_path),
@@ -52,21 +52,23 @@ impl ModelFiles {
         })
     }
 
-    pub fn load_file<T>(file_path: PathBuf) -> Result<T>
+    pub fn load_file<T>(file_path: std::path::PathBuf) -> ModelResult<T>
     where
         T: for<'a> serde::Deserialize<'a>,
     {
-        utils::load_file::<T>(file_path)
+        let file_data = std::fs::read(file_path)?;
+        let value: T = serde_json::from_slice(&file_data)?;
+        Ok(value)
     }
 
-    pub fn load_config<T>(&self) -> Result<T>
+    pub fn load_config<T>(&self) -> ModelResult<T>
     where
         T: for<'a> serde::Deserialize<'a>,
     {
         ModelFiles::load_file(self.config.clone())
     }
 
-    pub fn load_generation_config<T>(&self) -> Result<Option<T>>
+    pub fn load_generation_config<T>(&self) -> ModelResult<Option<T>>
     where
         T: for<'a> serde::Deserialize<'a>,
     {

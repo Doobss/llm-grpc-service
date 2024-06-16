@@ -1,23 +1,19 @@
-use candle_core::error::Error as CandleError;
-use hf_hub::api::sync::ApiError as HfApiError;
-use huggingface_tokenizers::Error as TokenizerError;
-use serde_json::Error as JsonError;
-use std::io::Error as StdIoError;
-
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    CandleError(#[from] CandleError),
+    CandleError(#[from] candle_core::error::Error),
     #[error(transparent)]
-    HfApiError(#[from] HfApiError),
+    HfApiError(#[from] hf_hub::api::sync::ApiError),
     #[error(transparent)]
-    StdIoError(#[from] StdIoError),
+    StdIoError(#[from] std::io::Error),
     #[error(transparent)]
-    JsonError(#[from] JsonError),
+    JsonError(#[from] serde_json::Error),
     #[error(transparent)]
-    TokenizerError(#[from] TokenizerError),
+    TokenizerError(#[from] crate::tokenizers::TokenizerError),
+    #[error(transparent)]
+    ModelError(#[from] crate::models::ModelError),
     #[error("Generation error: {message}")]
     GenerationError { message: String },
 }

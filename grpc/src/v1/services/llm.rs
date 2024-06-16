@@ -1,11 +1,8 @@
-use crate::v1::pb::v1::llm::service::*;
-use std::pin::Pin;
+use crate::v1::llm::*;
+use crate::{EndpointResult, EndpointStream};
 use tokio::sync::mpsc;
-use tokio_stream::{wrappers::ReceiverStream, Stream};
+use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
-
-type LlmResult<T> = Result<Response<T>, Status>;
-type ResponseStream = Pin<Box<dyn Stream<Item = Result<PromptReply, Status>> + Send>>;
 
 #[derive(Debug)]
 pub struct LlmServer {
@@ -24,9 +21,9 @@ impl LlmServer {
 
 #[tonic::async_trait]
 impl llm_server::Llm for LlmServer {
-    type promptStream = ResponseStream;
+    type promptStream = EndpointStream<PromptReply>;
 
-    async fn prompt(&self, req: Request<PromptRequest>) -> LlmResult<Self::promptStream> {
+    async fn prompt(&self, req: Request<PromptRequest>) -> EndpointResult<Self::promptStream> {
         tracing::info!(
             "LlmServer::prompt client connected from: {:?}",
             req.remote_addr()
