@@ -1,5 +1,3 @@
-use std::os::unix::process;
-
 use candle_core::{IndexOp, Tensor};
 use indexmap::IndexMap;
 
@@ -58,11 +56,10 @@ impl Decoder {
                         });
                         token_ids[index].push(token_id);
                     }
-                    tracing::debug!("elapesd 2: {:?}", loop_start.elapsed().as_micros());
                     let process_time = loop_start.elapsed();
 
                     let decoded_text = tokenizer
-                        .batch_decode(&token_ids, true)
+                        .batch_decode(&token_ids, false)
                         .expect("Error batch decode");
 
                     let mut indicies_to_keep = Vec::new();
@@ -119,9 +116,8 @@ impl Decoder {
                             &input_ids_shape, error
                         )
                     });
-
-                    let input_ids =
-                        input_ids
+                    if num_indicies > 0 {
+                        let input_ids = input_ids
                             .index_select(&indicies_to_keep, 0)
                             .unwrap_or_else(|error| {
                                 panic!(
@@ -129,37 +125,38 @@ impl Decoder {
                                     &indicies_to_keep, error
                                 )
                             });
-                    let added_attention =
-                        Tensor::ones((input_ids_shape[0], 1), attention_mask.dtype(), device)
+                        let added_attention =
+                            Tensor::zeros((input_ids_shape[0], 1), attention_mask.dtype(), device)
+                                .unwrap_or_else(|error| {
+                                    panic!("Error creating added attention: {:?}", error)
+                                });
+
+                        let attention_mask = Tensor::cat(&[&attention_mask, &added_attention], 1)
                             .unwrap_or_else(|error| {
-                                panic!("Error creating added attention: {:?}", error)
+                                panic!("Error cating added attention: {:?}", error)
                             });
+                        let attention_mask = attention_mask.index_select(&indicies_to_keep, 0)?;
+                        let past_key_values = if let Some(past_key_values) = past_key_values {
+                            Some(past_key_values.index_select(&indicies_to_keep, 0)?)
+                        } else {
+                            None
+                        };
 
-                    let attention_mask = Tensor::cat(&[&attention_mask, &added_attention], 1)
-                        .unwrap_or_else(|error| {
-                            panic!("Error cating added attention: {:?}", error)
-                        });
-                    let attention_mask = attention_mask.index_select(&indicies_to_keep, 0)?;
-                    let past_key_values = if let Some(past_key_values) = past_key_values {
-                        Some(past_key_values.index_select(&indicies_to_keep, 0)?)
-                    } else {
-                        None
-                    };
-
+                        let next_batch = TokenizedBatch {
+                            requests: kept_requests,
+                            input_ids,
+                            attention_mask,
+                            past_key_values,
+                        };
+                        if !next_batch.is_empty() {
+                            tracing::debug!(
+                                "decode_task: sending non finished batch back to generation."
+                            );
+                            tokenized_batch_sender.blocking_send(next_batch)?;
+                        }
+                    }
                     let filter_time = loop_start.elapsed();
 
-                    let next_batch = TokenizedBatch {
-                        requests: kept_requests,
-                        input_ids,
-                        attention_mask,
-                        past_key_values,
-                    };
-                    if !next_batch.is_empty() {
-                        tracing::debug!(
-                            "decode_task: sending non finished batch back to generation."
-                        );
-                        tokenized_batch_sender.blocking_send(next_batch)?;
-                    }
                     let loop_end = loop_start.elapsed().as_micros();
                     let process_time = process_time.as_micros();
                     let decode_time = decode_time.as_micros() - process_time;

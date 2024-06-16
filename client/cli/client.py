@@ -2,7 +2,7 @@ import click
 import asyncio
 from typing import Union
 from uuid import uuid4
-from reflection import LLmClient
+import reflection
 from .echo import echo, grey, green, red, magenta, cyan
 
 
@@ -61,7 +61,7 @@ async def start_client(
     connect_attempts = 0
     max_retries = 10
     target = f'{host}:{port}'
-    client = LLmClient(target=target)
+    client = reflection.LLmClient(target=target)
     while max_retries > connect_attempts:
         try:
             connect_attempts = 0
@@ -102,12 +102,14 @@ def echo_message(message, last_message: Union[str, None]) -> str:
 
 
 def get_message_info(message) -> str:
-    if message.meta is not None:
-        return grey(f"model: {message.meta.model.type} "
-                              f"token/sec: {message.meta.tokens_per_second:.2f} | "
-                              f"ave batch size: {message.meta.average_batch_size:.2f} | "
-                              f"device: {message.meta.model.device} (x {message.meta.model.number_of_devices or 1})| "
-                              f"dtype: {message.meta.model.dtype}\n")
+    meta = message.meta if hasattr(message, 'meta') else None
+    model = meta.model if meta is not None and hasattr(meta, 'model') else None
+    if meta is not None and model:
+        return grey(f"model: {meta.model.type} "
+                              f"token/sec: {meta.tokens_per_second:.2f} | "
+                              f"ave batch size: {meta.average_batch_size:.2f} | "
+                              f"device: {model.device} (x {model.number_of_devices or 1})| "
+                              f"dtype: {model.dtype}\n")
     else:
         return '\n'
 

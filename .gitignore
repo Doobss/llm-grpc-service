@@ -13,3 +13,10 @@ config.toml
 .cache
 cache
 *.bin
+__pycache__
+*.egg-info
+*_pb2.py*
+*_pb2_grpc.py*
+__pycache__/
+venv
+client/build
