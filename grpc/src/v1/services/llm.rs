@@ -102,7 +102,7 @@ impl From<llm::PromptConfig> for PromptConfig {
             seed,
         } = value;
         Self {
-            max_new_tokens: max_new_tokens.unwrap_or_default(),
+            max_new_tokens,
             num_beams: num_beams.unwrap_or_default(),
             temperature: temperature.unwrap_or_default() as f32,
             top_k: top_k.unwrap_or_default() as i32,

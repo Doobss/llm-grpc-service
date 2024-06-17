@@ -11,7 +11,7 @@ impl From<PromptConfig> for llm::PromptConfig {
             rng.gen()
         };
         Self {
-            max_new_tokens: utils::default_to_optional(value.max_new_tokens),
+            max_new_tokens: utils::default_to_optional(value.max_new_tokens).unwrap_or(200),
             num_beams: utils::default_to_optional(value.num_beams),
             temperature: utils::default_to_optional(value.temperature as f64),
             top_k: utils::default_to_optional(value.top_k as usize),

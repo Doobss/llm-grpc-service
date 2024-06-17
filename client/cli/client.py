@@ -2,7 +2,9 @@ import click
 import asyncio
 from typing import Union
 from uuid import uuid4
-import reflection
+
+from reflection import LLmClient, GrpcReflection
+from reflection.promptClient import PromptClient
 from .echo import echo, grey, green, red, magenta, cyan
 
 
@@ -60,8 +62,32 @@ async def start_client(
     ) -> None:
     connect_attempts = 0
     max_retries = 10
+
     target = f'{host}:{port}'
-    client = reflection.LLmClient(target=target)
+    reflection = GrpcReflection(target=target)
+    prompt_client = PromptClient(reflection=reflection)
+    llm_client = LLmClient(reflection=reflection)
+    
+    messages: list[dict] = [
+
+    ]
+    def add_message(content: str, role: str) -> None:
+        messages.append({ "role": role, "content": content })
+
+    def add_user_message(content: str) -> None:
+        add_message(content, 'user')
+
+    def add_assistant_message(content: str) -> None:
+        add_message(content, 'assistant')
+
+    
+    def apply_template(messages: list[dict]) -> str:
+        response = prompt_client.apply_template(messages=messages)
+        if hasattr(response, 'content') and isinstance(response.content, str):
+            return f'{response.content}'
+        else:
+            raise ValueError(f'Error applying template: {str(response)}')
+        
     while max_retries > connect_attempts:
         try:
             connect_attempts = 0
@@ -70,12 +96,13 @@ async def start_client(
             echo("\n")
             while True:
                 input_prompt = click.prompt(f'{green("user")}')
+                add_user_message(input_prompt)
                 last_message: Union[str, None] = None
-                for message in client.prompt(content=apply_template(input_prompt)):
+                for message in llm_client.prompt(content=apply_template(messages=messages)):
                     last_message = echo_message(message, last_message)
+                add_assistant_message(last_message)
         except click.exceptions.Abort as close_event:
-            echo(f'\n{grey("disconnecting client")}')
-            client.close()
+            echo(f'\n{grey("disconnecting client")}')            
             break
         except Exception as error:
             echo(f'''\n{red("Error occurred")}: {str(error)}''', nl=False)
@@ -113,6 +140,3 @@ def get_message_info(message) -> str:
     else:
         return '\n'
 
-
-def apply_template(query: str) -> str:
-    return (f'<s>[INST] {query} [/INST] </s> response: ')

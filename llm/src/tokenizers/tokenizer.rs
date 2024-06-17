@@ -38,10 +38,13 @@ impl Tokenizer {
             Err(error) => Err(TokenizerError::TokenizerError(error)),
         }?;
 
-        let mut ids: Vec<&[u32]> = Vec::new();
-        let mut attentions: Vec<&[u32]> = Vec::new();
+        let mut ids: Vec<&[u32]> = Vec::with_capacity(encodings.len());
+        let mut attentions: Vec<&[u32]> = Vec::with_capacity(encodings.len());
+        let mut token_ids: Vec<Vec<u32>> = Vec::with_capacity(encodings.len());
+
         for encoding in encodings.iter() {
             ids.push(encoding.get_ids());
+            token_ids.push(encoding.get_ids().into());
             attentions.push(encoding.get_attention_mask());
         }
         let device = get_device(false)?;
@@ -62,6 +65,7 @@ impl Tokenizer {
         let attention_mask = padding_tokens.where_cond(&ignore_mask, &attention_mask)?;
         Ok(BatchEncoding {
             ids,
+            token_ids,
             attention_mask,
         })
     }

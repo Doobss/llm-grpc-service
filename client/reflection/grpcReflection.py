@@ -1,5 +1,6 @@
 import os
 import grpc
+import logging
 from typing import Type, Union
 from google.protobuf.message import Message
 from google.protobuf.descriptor_pool import DescriptorPool
@@ -10,6 +11,9 @@ from google.protobuf.descriptor import (
     MethodDescriptor,
     Descriptor
 )
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 class _Described:
@@ -42,6 +46,7 @@ class Method(_Described):
         }
         for name, message in self.messages.items():
             setattr(self, name, message)
+        
 
     @property
     def path(self) -> str:
@@ -93,6 +98,8 @@ class GrpcReflection:
     def __init__(self, target: str = None, credentials: grpc.ChannelCredentials = None) -> None:
         self.target = target or os.getenv("GRPC_TARGET", default="127.0.0.1:50051")
         self.credentials = credentials
+        logger.info(f'Starting grpc reflection. {target = } | {bool(credentials) = }')
+
         self.channel = _channel(
             target=self.target,
             credentials=self.credentials
@@ -110,6 +117,7 @@ class GrpcReflection:
         }
         for service in self.services.values():
             setattr(self, service.name, service)
+        logger.info(f'{self}')
 
     def __repr__(self) -> str:
 

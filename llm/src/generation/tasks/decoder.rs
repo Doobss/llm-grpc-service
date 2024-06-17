@@ -29,20 +29,20 @@ impl Decoder {
 
                     let GenerationStep { batch, logits } = generation_result;
                     let TokenizedBatch {
-                        requests,
+                        mut requests,
                         input_ids,
                         attention_mask,
                         past_key_values,
+                        mut token_ids,
                     } = batch;
                     struct ProcessedToken {
                         pub token_id: u32,
                         pub is_end_of_sequence: bool,
                     }
-                    // Below is a very expensive op. Around 30_000 micro secs (like 99% of the total time for this task)
-                    let mut token_ids = input_ids.to_vec2::<u32>()?;
-                    let mut processed_tokens = Vec::with_capacity(requests.len());
 
-                    for (index, request) in requests.values().enumerate() {
+                    let mut processed_tokens = Vec::with_capacity(requests.len());
+                    let mut added_tokens = Vec::with_capacity(token_ids.len());
+                    for (index, request) in requests.values_mut().enumerate() {
                         let logit_row = logits.i(index)?.squeeze(0)?;
                         let GenerationLogitsProcessor {
                             preprocess: _,
@@ -55,6 +55,8 @@ impl Decoder {
                             is_end_of_sequence,
                         });
                         token_ids[index].push(token_id);
+                        added_tokens.push(token_id);
+                        request.number_tokens_generated += 1;
                     }
                     let process_time = loop_start.elapsed();
 
@@ -77,6 +79,12 @@ impl Decoder {
                             token_id,
                             mut is_end_of_sequence,
                         } = processed;
+                        let reached_max_tokens =
+                            request.number_tokens_generated >= request.config.max_new_tokens as u32;
+                        tracing::info!("reached_max_tokens: {}", &reached_max_tokens);
+                        if reached_max_tokens {
+                            is_end_of_sequence = true
+                        }
                         if request.sender().is_closed() {
                             is_end_of_sequence = true
                         } else {
@@ -94,29 +102,31 @@ impl Decoder {
                         }
                     }
                     let send_time = loop_start.elapsed();
-
-                    let device = input_ids.device();
                     let num_indicies = indicies_to_keep.len();
-                    let indicies_to_keep =
-                        Tensor::from_vec(indicies_to_keep, num_indicies, device)?;
-                    let input_ids_shape = input_ids.dims();
-                    let token_ids = token_ids.into_iter().fold(Vec::new(), |mut vec, tokens| {
-                        vec.extend(tokens);
-                        vec
-                    });
 
-                    let input_ids = Tensor::from_vec(
-                        token_ids,
-                        (input_ids_shape[0], input_ids_shape[1] + 1),
-                        device,
-                    )
-                    .unwrap_or_else(|error| {
-                        panic!(
-                            "Error creating new input ids {:?} error: {:?}",
-                            &input_ids_shape, error
-                        )
-                    });
                     if num_indicies > 0 {
+                        let device = input_ids.device();
+
+                        let mut filtered_token_ids = Vec::with_capacity(num_indicies);
+                        for (index, vec) in token_ids.into_iter().enumerate() {
+                            if indicies_to_keep.contains(&(index as u32)) {
+                                filtered_token_ids.push(vec)
+                            }
+                        }
+                        let indicies_to_keep =
+                            Tensor::from_vec(indicies_to_keep, num_indicies, device)?;
+                        let input_ids_shape = input_ids.dims();
+
+                        let added_tokens =
+                            Tensor::new(added_tokens, input_ids.device())?.unsqueeze(1)?;
+
+                        let input_ids = Tensor::cat(&[&input_ids, &added_tokens], 1)
+                            .unwrap_or_else(|error| {
+                                panic!(
+                                    "Error creating new input ids {:?} error: {:?}",
+                                    &input_ids_shape, error
+                                )
+                            });
                         let input_ids = input_ids
                             .index_select(&indicies_to_keep, 0)
                             .unwrap_or_else(|error| {
@@ -144,6 +154,7 @@ impl Decoder {
 
                         let next_batch = TokenizedBatch {
                             requests: kept_requests,
+                            token_ids: filtered_token_ids,
                             input_ids,
                             attention_mask,
                             past_key_values,

@@ -5,6 +5,7 @@ use indexmap::IndexMap;
 #[derive(Debug)]
 pub struct TokenizedBatch {
     pub requests: IndexMap<String, GenerationRequest>,
+    pub token_ids: Vec<Vec<u32>>,
     pub input_ids: Tensor,
     pub attention_mask: Tensor,
     pub past_key_values: Option<Tensor>,
@@ -24,9 +25,11 @@ impl TokenizedBatch {
         let BatchEncoding {
             ids,
             attention_mask,
+            token_ids,
         } = tokenizer.encode_batch(prompts, false)?;
         Ok(Self {
             requests,
+            token_ids,
             input_ids: ids,
             attention_mask,
             past_key_values: None,

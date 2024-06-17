@@ -4,6 +4,7 @@ use candle_core::Tensor;
 #[derive(Debug)]
 pub struct BatchEncoding {
     pub ids: Tensor,
+    pub token_ids: Vec<Vec<u32>>,
     pub attention_mask: Tensor,
 }
 
@@ -29,9 +30,7 @@ impl BatchEncoding {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     // use crate::{ModelType, Tokenizer};
-
 }

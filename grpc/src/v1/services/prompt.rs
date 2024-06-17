@@ -46,6 +46,10 @@ impl prompt_server::Prompt for PromptServer {
         } = req.into_inner();
         let template: Option<llm::ChatTemplate> =
             if let Some(custom_string) = utils::default_to_optional(custom_template) {
+                tracing::debug!(
+                    "Prompt apply template using custom template: {:?}",
+                    &custom_string
+                );
                 Some(self.tokenizer.new_chat_template(custom_string))
             } else {
                 self.template.clone()

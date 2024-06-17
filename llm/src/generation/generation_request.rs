@@ -12,6 +12,7 @@ pub struct GenerationRequest {
     pub generated: String,
     pub config: PromptConfig,
     pub reply_sender: GenerationResultSender,
+    pub number_tokens_generated: u32,
     // logit: GenerationLogitsProcessor,
 }
 
@@ -30,6 +31,7 @@ impl GenerationRequest {
             reply_sender,
             // logit,
             generated: String::new(),
+            number_tokens_generated: 0,
         }
     }
 }
