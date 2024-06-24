@@ -1,39 +1,8 @@
 use super::ModelFiles;
-use crate::{ModelResult, TokenizedBatch};
+use crate::{ModelResult, ModelType, TokenizedBatch};
 use candle_core::Tensor;
 use candle_nn::VarBuilder;
 use hf_hub::{api, api::sync::ApiRepo, Repo, RepoType};
-
-#[derive(Clone, Debug, Copy, PartialEq, Eq, clap::ValueEnum)]
-pub enum ModelType {
-    #[value(name = "7b-v0.2")]
-    Mistral7bV02,
-    #[value(name = "7b-instruct-v0.2")]
-    Mistral7bInstructV02,
-    #[value(name = "7B-v0.1")]
-    Mistral7bV01,
-    #[value(name = "7B-v0.1-quant")]
-    QuantizedMistral7bV01,
-}
-
-impl ModelType {
-    pub fn path(&self) -> String {
-        match self {
-            ModelType::Mistral7bV01 => "mistralai/Mistral-7B-v0.1".to_string(),
-            ModelType::QuantizedMistral7bV01 => "mistralai/Mistral-7B-v0.1".to_string(),
-            ModelType::Mistral7bV02 => "mistralai/Mistral-7B-v0.2".to_string(),
-            ModelType::Mistral7bInstructV02 => "mistralai/Mistral-7B-Instruct-v0.2".to_string(),
-        }
-    }
-
-    pub fn id(&self) -> String {
-        self.path()
-    }
-
-    pub fn is_quantized(self) -> bool {
-        self == ModelType::QuantizedMistral7bV01
-    }
-}
 
 #[derive(Debug)]
 enum InnerModel {
@@ -65,7 +34,7 @@ impl Model {
     pub fn load(model_type: ModelType) -> ModelResult<Self> {
         let api = api::sync::ApiBuilder::new()
             .with_cache_dir("./.cache/huggingface".into())
-            .with_token(Some("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".to_owned()))
+            .with_token(Some(std::env!("HUGGING_FACE_TOKEN").to_owned()))
             .build()?;
         let model_id = model_type.path();
         tracing::debug!("loading model_id: {model_id}");

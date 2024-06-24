@@ -10,6 +10,7 @@ extern crate candle_examples;
 extern crate candle_nn;
 extern crate candle_transformers;
 extern crate clap;
+extern crate cudarc;
 extern crate hf_hub;
 extern crate minijinja;
 extern crate minijinja_contrib;
@@ -21,6 +22,7 @@ extern crate tracing;
 extern crate tracing_subscriber;
 extern crate uuid;
 
+mod device;
 mod error;
 mod generation;
 mod logits;
@@ -32,6 +34,7 @@ mod utils;
 pub use candle_transformers::generation::Sampling;
 pub use error::{Error, Result};
 
+pub use device::*;
 pub use generation::*;
 pub use logits::*;
 pub use models::*;

@@ -14,11 +14,14 @@ documentation = ""
 
 [workspace.dependencies]
 approx = "*"
+cudarc = { version = "*" }
 candle-core = { git = "https://github.com/huggingface/candle.git", version = "0.5.1", features = [
     "cuda",
+    "cudnn",
 ] }
 candle-examples = { git = "https://github.com/huggingface/candle.git", features = [
     "cuda",
+    "cudnn",
 ] }
 candle-nn = { git = "https://github.com/huggingface/candle.git", features = [
     "cuda",

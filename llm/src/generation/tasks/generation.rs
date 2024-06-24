@@ -19,10 +19,18 @@ impl Generation {
             tracing::debug!("generation_task: awaiting batches");
             if let Some(batch) = tokenized_batch_receiver.blocking_recv() {
                 let loop_start = tokio::time::Instant::now();
+
                 let logits = model.forward(&batch)?;
+                let generation_time = loop_start.elapsed().as_micros();
+
+                let sync_start = loop_start.elapsed().as_micros();
+                // let device = logits.device();
+                // device.synchronize()?;
+                let sync_time = loop_start.elapsed().as_micros() - sync_start;
+
                 generation_result_sender.blocking_send(GenerationStep { batch, logits })?;
                 let loop_end = loop_start.elapsed().as_micros();
-                tracing::debug!("generation task finished in: {:?} micro seconds", loop_end);
+                tracing::debug!("generation task finished in: {:?} micro seconds | generation_time: {} ms | sync_time: {} ms", loop_end, generation_time, sync_time);
             }
         })
     }

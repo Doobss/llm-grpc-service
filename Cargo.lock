@@ -1373,6 +1373,7 @@ dependencies = [
  "candle-nn",
  "candle-transformers",
  "clap",
+ "cudarc",
  "hf-hub",
  "indexmap 2.2.6",
  "minijinja",

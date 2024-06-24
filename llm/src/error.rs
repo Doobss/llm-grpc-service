@@ -14,6 +14,8 @@ pub enum Error {
     TokenizerError(#[from] crate::tokenizers::TokenizerError),
     #[error(transparent)]
     ModelError(#[from] crate::models::ModelError),
+    #[error(transparent)]
+    DeviceError(#[from] crate::device::DeviceError),
     #[error("Generation error: {message}")]
     GenerationError { message: String },
 }

@@ -23,3 +23,13 @@ impl From<String> for Prompt {
         }
     }
 }
+
+impl From<&'static str> for Prompt {
+    fn from(content: &str) -> Self {
+        Self {
+            id: Prompt::gen_id(),
+            content: content.to_owned(),
+            config: PromptConfig::default(),
+        }
+    }
+}

@@ -3,7 +3,7 @@ target
 /.kafka
 /.logs
 .env
-bin_test.rs
+*_test.rs*
 .cert
 dist
 node_modules
