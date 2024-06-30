@@ -1,5 +1,4 @@
-use super::ModelFiles;
-use crate::{ModelResult, ModelType, TokenizedBatch};
+use crate::{ModelConfig, ModelFiles, ModelResult, TokenizedBatch};
 use candle_core::Tensor;
 use candle_nn::VarBuilder;
 use hf_hub::{api, api::sync::ApiRepo, Repo, RepoType};
@@ -12,9 +11,9 @@ enum InnerModel {
 
 #[derive(Debug)]
 pub struct Model {
+    config: ModelConfig,
     inner: InnerModel,
     device: candle_core::Device,
-    dtype: candle_core::DType,
 }
 
 impl Model {
@@ -31,26 +30,26 @@ impl Model {
 }
 
 impl Model {
-    pub fn load(model_type: ModelType) -> ModelResult<Self> {
+    pub fn load(config: ModelConfig) -> ModelResult<Self> {
         let api = api::sync::ApiBuilder::new()
             .with_cache_dir("./.cache/huggingface".into())
             .with_token(Some(std::env!("HUGGING_FACE_TOKEN").to_owned()))
             .build()?;
-        let model_id = model_type.path();
+        let model_id = config.model_id.path();
         tracing::debug!("loading model_id: {model_id}");
         let repo = api.repo(Repo::with_revision(
             model_id,
             RepoType::Model,
             "main".to_owned(),
         ));
-        Self::from_repo(model_type, &repo)
+        Self::from_repo(config, &repo)
     }
 
-    pub fn from_files(files: ModelFiles) -> ModelResult<Self> {
+    pub fn from_files(config: ModelConfig, files: ModelFiles) -> ModelResult<Self> {
         let device = Model::init_device()?;
         let dtype = Model::init_dtype()?;
-        let inner = match files.model_type {
-            ModelType::QuantizedMistral7bV01 => {
+        let inner = match config.quantize {
+            true => {
                 let config = files.load_config()?;
                 // let generation_config = files.load_generation_config();
                 tracing::debug!("Model config: {:?}", &config);
@@ -76,13 +75,13 @@ impl Model {
         Ok(Self {
             inner,
             device,
-            dtype,
+            config,
         })
     }
 
-    pub fn from_repo(model_type: ModelType, repo: &ApiRepo) -> ModelResult<Self> {
-        let tokenizer_files = ModelFiles::from_repo(model_type, repo)?;
-        Self::from_files(tokenizer_files)
+    pub fn from_repo(config: ModelConfig, repo: &ApiRepo) -> ModelResult<Self> {
+        let tokenizer_files = ModelFiles::from_repo(config.model_id.clone(), repo)?;
+        Self::from_files(config, tokenizer_files)
     }
 
     pub fn init_device() -> ModelResult<candle_core::Device> {

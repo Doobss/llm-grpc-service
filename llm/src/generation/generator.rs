@@ -1,7 +1,7 @@
 extern crate tokio;
 
 use super::{GenerationBatch, GenerationRequest, GenerationResult, TextGeneration};
-use crate::{tasks, GenerationStep, ModelType, Prompt, Result, TokenizedBatch};
+use crate::{tasks, GenerationStep, ModelConfig, Prompt, Result, TokenizedBatch};
 use std::sync::Arc;
 
 pub type GenerationRequestSender = tokio::sync::mpsc::Sender<GenerationRequest>;
@@ -84,8 +84,8 @@ impl Generator {
         Self { request_sender }
     }
 
-    pub async fn from_model_type(model_type: ModelType) -> Result<Self> {
-        let generation = TextGeneration::new(model_type)?;
+    pub async fn from_model_config(config: ModelConfig) -> Result<Self> {
+        let generation = TextGeneration::new(config)?;
         Ok(Generator::new(generation).await)
     }
 }

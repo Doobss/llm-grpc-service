@@ -31,6 +31,7 @@ mod prompts;
 mod tokenizers;
 mod utils;
 
+pub use candle_core::DType;
 pub use candle_transformers::generation::Sampling;
 pub use error::{Error, Result};
 

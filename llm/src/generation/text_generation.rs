@@ -1,4 +1,4 @@
-use crate::{Model, ModelType, Result, TokenizedBatch, Tokenizer};
+use crate::{Model, ModelConfig, Result, TokenizedBatch, Tokenizer};
 use candle_core::Tensor;
 
 pub struct TextGeneration {
@@ -14,10 +14,10 @@ impl TextGeneration {
 }
 
 impl TextGeneration {
-    pub fn new(model_type: ModelType) -> Result<Self> {
+    pub fn new(config: ModelConfig) -> Result<Self> {
         Ok(Self {
-            model: Model::load(model_type)?,
-            tokenizer: Tokenizer::load(model_type)?,
+            tokenizer: Tokenizer::load(config.model_id)?,
+            model: Model::load(config)?,
         })
     }
 }

@@ -23,7 +23,7 @@ impl ModelFiles {
         let mut weights = Vec::new();
         let mut quantized_weights = Vec::new();
         let repo_info = repo.info()?;
-        if model_type.is_quantized() {
+        if model_type.is_quantizable() {
             quantized_weights = repo_info
                 .siblings
                 .into_iter()

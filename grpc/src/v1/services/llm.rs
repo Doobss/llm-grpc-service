@@ -10,9 +10,9 @@ pub struct LlmServer {
 }
 
 impl LlmServer {
-    pub async fn new(model_type: llm::ModelType) -> crate::Result<Self> {
+    pub async fn new(config: llm::ModelConfig) -> crate::Result<Self> {
         Ok(Self {
-            generator: llm::Generator::from_model_type(model_type)
+            generator: llm::Generator::from_model_config(config)
                 .await
                 .expect("Error initializing text generation"),
         })
@@ -62,9 +62,9 @@ impl llm_server::Llm for LlmServer {
     }
 }
 
-pub async fn service(model_type: llm::ModelType) -> llm_server::LlmServer<LlmServer> {
+pub async fn service(config: llm::ModelConfig) -> llm_server::LlmServer<LlmServer> {
     tracing::info!("Adding llm service");
-    let server = LlmServer::new(model_type)
+    let server = LlmServer::new(config)
         .await
         .expect("Error loading llm service");
     llm_server::LlmServer::new(server)
