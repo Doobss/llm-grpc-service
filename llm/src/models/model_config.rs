@@ -1,8 +1,26 @@
+use super::ModelResult;
+
 #[derive(Debug, Clone)]
 pub struct ModelConfig {
     pub model_id: super::ModelType,
     pub dtype: candle_core::DType,
     pub quantize: bool,
+}
+
+impl ModelConfig {
+    pub fn api_repo(&self) -> ModelResult<hf_hub::api::sync::ApiRepo> {
+        let api = hf_hub::api::sync::ApiBuilder::new()
+            .with_cache_dir("./.cache/huggingface".into())
+            .with_token(Some(std::env!("HUGGING_FACE_TOKEN").to_owned()))
+            .build()?;
+        let model_id = self.model_id.path();
+        tracing::debug!("loading model_id: {model_id}");
+        Ok(api.repo(hf_hub::Repo::with_revision(
+            model_id,
+            hf_hub::RepoType::Model,
+            "main".to_owned(),
+        )))
+    }
 }
 
 pub fn str_to_dtype(value: &str) -> candle_core::DType {

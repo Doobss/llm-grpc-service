@@ -25,6 +25,10 @@ impl Device {
     pub fn ordinal(&self) -> usize {
         self.inner.ordinal()
     }
+
+    pub fn candle_device(&self) -> DeviceResult<candle_core::Device> {
+        Ok(candle_core::Device::new_cuda(self.ordinal())?)
+    }
 }
 
 impl Debug for Device {

@@ -4,4 +4,6 @@ pub type DeviceResult<T> = core::result::Result<T, DeviceError>;
 pub enum DeviceError {
     #[error(transparent)]
     CudaDriverError(#[from] cudarc::driver::DriverError),
+    #[error(transparent)]
+    CandleDeviceError(#[from] candle_core::Error),
 }

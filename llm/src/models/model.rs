@@ -1,7 +1,7 @@
 use crate::{ModelConfig, ModelFiles, ModelResult, TokenizedBatch};
 use candle_core::Tensor;
 use candle_nn::VarBuilder;
-use hf_hub::{api, api::sync::ApiRepo, Repo, RepoType};
+use hf_hub::api::sync::ApiRepo;
 
 #[derive(Debug)]
 enum InnerModel {
@@ -31,17 +31,8 @@ impl Model {
 
 impl Model {
     pub fn load(config: ModelConfig) -> ModelResult<Self> {
-        let api = api::sync::ApiBuilder::new()
-            .with_cache_dir("./.cache/huggingface".into())
-            .with_token(Some(std::env!("HUGGING_FACE_TOKEN").to_owned()))
-            .build()?;
-        let model_id = config.model_id.path();
-        tracing::debug!("loading model_id: {model_id}");
-        let repo = api.repo(Repo::with_revision(
-            model_id,
-            RepoType::Model,
-            "main".to_owned(),
-        ));
+        tracing::debug!("loading model_id: {:?}", config.model_id);
+        let repo = config.api_repo()?;
         Self::from_repo(config, &repo)
     }
 
@@ -80,7 +71,7 @@ impl Model {
     }
 
     pub fn from_repo(config: ModelConfig, repo: &ApiRepo) -> ModelResult<Self> {
-        let tokenizer_files = ModelFiles::from_repo(config.model_id.clone(), repo)?;
+        let tokenizer_files = ModelFiles::from_repo(config.model_id, repo)?;
         Self::from_files(config, tokenizer_files)
     }
 
