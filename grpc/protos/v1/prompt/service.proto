@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package v1_prompt_service;
+
+// A single message used to apply a chat template
+message Message {
+    // Optional (will be filled in with random value)
+    int32 id = 1;
+    // shoule be one of 'assitant' or 'user' but custom templates could include more
+    string role = 2;
+    string content = 3;
+    // Optional
+    string name = 4;
+}
+
+// Request to use a jninja template to apply format a series of messages.
+message ApplyTemplateRequest {
+    // Optional (will be filled in with random value)
+    int32 id = 1;
+    repeated Message messages = 2;
+    // Optional (will attempt to use current model's template if present. 
+    // If it's not present and no custom_template provided than will return error)
+    string custom_template = 3;
+}
+
+message ApplyTemplateReply {
+    int32 id = 1;
+    // Result of applying a template to given messages.
+    string content = 2;
+    // The template used to construct the content.    
+    string template = 3;
+}
+
+
+// Request to use a jninja template to apply format a series of messages.
+message GetTemplateRequest {
+}
+
+message GetTemplateReply {
+    // model associated with the template
+    string model_id = 1;
+    // Result of applying a template to given messages.
+    string template = 2;
+}
+
+service Prompt {
+
+  // Apply the current model's or a provided template to a series of messages
+  rpc apply_template(ApplyTemplateRequest) returns (ApplyTemplateReply);
+  // Gets the template for the current model, will throw an error if no template is found for the current model
+  rpc get_template(GetTemplateRequest) returns (GetTemplateReply);
+
+}

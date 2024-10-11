@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package v1_llm_service;
+
+// Ways to configure a prompt request.
+message PromptConfig {
+  int32 max_new_tokens = 1;
+  int32 num_beams = 2;
+  float temperature = 3;
+  int32 top_k = 4;
+  float top_p = 5;
+  float repetition_penalty = 6;
+  int64 seed = 7;
+}
+
+// A request for llm streaming generation.
+message PromptRequest {
+  string id = 1;
+  string content = 2;
+  PromptConfig config = 3;
+}
+
+// Data about the generation process and the model.
+message PromptMetaData {
+
+  message Model {
+    string device = 1;
+    string dtype = 2;
+    string type = 3;
+    int32 number_of_devices = 4;
+  }
+
+  float tokens_per_second = 1;
+  float average_batch_size = 2;
+  Model model = 3;
+
+}
+
+// A generated chuck where if is_end_of_sequence is True it will be the last of the stream.
+message PromptReply {
+  string id = 1;
+  string content = 2;
+  bool is_end_of_sequence = 3;
+  PromptConfig config = 4;
+  PromptMetaData meta = 5;
+  string generated = 6;
+}
+
+
+service Llm {
+
+  // Ask a llm a question. (The content of the message is given to the model exactly as sent, no formatting or templating)
+  rpc prompt(PromptRequest) returns (stream PromptReply);
+
+}

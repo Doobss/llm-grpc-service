@@ -1,4 +1,5 @@
-venv
-*.egg-info
-build
+target
 dist
+build
+.cache
+cache
