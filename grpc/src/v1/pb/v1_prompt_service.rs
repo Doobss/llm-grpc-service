@@ -159,11 +159,11 @@ pub mod prompt_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/v1.prompt.service.Prompt/apply_template",
+                "/v1_prompt_service.Prompt/apply_template",
             );
             let mut req = request.into_request();
             req.extensions_mut()
-                .insert(GrpcMethod::new("v1.prompt.service.Prompt", "apply_template"));
+                .insert(GrpcMethod::new("v1_prompt_service.Prompt", "apply_template"));
             self.inner.unary(req, path, codec).await
         }
         /// Gets the template for the current model, will throw an error if no template is found for the current model
@@ -185,11 +185,11 @@ pub mod prompt_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/v1.prompt.service.Prompt/get_template",
+                "/v1_prompt_service.Prompt/get_template",
             );
             let mut req = request.into_request();
             req.extensions_mut()
-                .insert(GrpcMethod::new("v1.prompt.service.Prompt", "get_template"));
+                .insert(GrpcMethod::new("v1_prompt_service.Prompt", "get_template"));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -297,7 +297,7 @@ pub mod prompt_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/v1.prompt.service.Prompt/apply_template" => {
+                "/v1_prompt_service.Prompt/apply_template" => {
                     #[allow(non_camel_case_types)]
                     struct apply_templateSvc<T: Prompt>(pub Arc<T>);
                     impl<
@@ -343,7 +343,7 @@ pub mod prompt_server {
                     };
                     Box::pin(fut)
                 }
-                "/v1.prompt.service.Prompt/get_template" => {
+                "/v1_prompt_service.Prompt/get_template" => {
                     #[allow(non_camel_case_types)]
                     struct get_templateSvc<T: Prompt>(pub Arc<T>);
                     impl<
@@ -427,6 +427,6 @@ pub mod prompt_server {
         }
     }
     impl<T: Prompt> tonic::server::NamedService for PromptServer<T> {
-        const NAME: &'static str = "v1.prompt.service.Prompt";
+        const NAME: &'static str = "v1_prompt_service.Prompt";
     }
 }

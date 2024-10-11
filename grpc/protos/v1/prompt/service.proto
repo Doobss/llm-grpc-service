@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package v1.prompt.service;
+package v1_prompt_service;
 
 // A single message used to apply a chat template
 message Message {

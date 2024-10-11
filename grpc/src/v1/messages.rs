@@ -1,4 +1,4 @@
-use super::pb::v1::llm::service::*;
+use super::pb::v1_llm_service::*;
 use crate::utils;
 use rand::prelude::*;
 

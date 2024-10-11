@@ -2,10 +2,10 @@ mod messages;
 mod pb;
 
 pub mod llm {
-    pub use super::pb::v1::llm::service::*;
+    pub use super::pb::v1_llm_service::*;
 }
 pub mod prompt {
-    pub use super::pb::v1::prompt::service::*;
+    pub use super::pb::v1_prompt_service::*;
 }
 
 pub mod services;

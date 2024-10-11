@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package v1.llm.service;
+package v1_llm_service;
 
 // Ways to configure a prompt request.
 message PromptConfig {

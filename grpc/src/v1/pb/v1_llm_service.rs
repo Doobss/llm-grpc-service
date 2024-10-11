@@ -176,10 +176,10 @@ pub mod llm_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/v1.llm.service.Llm/prompt",
+                "/v1_llm_service.Llm/prompt",
             );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new("v1.llm.service.Llm", "prompt"));
+            req.extensions_mut().insert(GrpcMethod::new("v1_llm_service.Llm", "prompt"));
             self.inner.server_streaming(req, path, codec).await
         }
     }
@@ -282,7 +282,7 @@ pub mod llm_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/v1.llm.service.Llm/prompt" => {
+                "/v1_llm_service.Llm/prompt" => {
                     #[allow(non_camel_case_types)]
                     struct promptSvc<T: Llm>(pub Arc<T>);
                     impl<
@@ -367,6 +367,6 @@ pub mod llm_server {
         }
     }
     impl<T: Llm> tonic::server::NamedService for LlmServer<T> {
-        const NAME: &'static str = "v1.llm.service.Llm";
+        const NAME: &'static str = "v1_llm_service.Llm";
     }
 }
