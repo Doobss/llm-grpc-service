@@ -1,5 +1,6 @@
 ## Setup
 ```bash
+sudo apt update -y
 sudo apt install python3.11 python3.11-venv -y
 python3.11 -m venv venv
 source venv/bin/activate
@@ -18,6 +19,7 @@ python3.11 -m pip install .[server]
  --grpc_python_out=. \
  ./protos/[path to proto dir]/*.proto
 ```
+<<<<<<< HEAD
 
 ## System installs
 
@@ -31,3 +33,5 @@ sudo dpkg -i cuda-keyring_1.0-1_all.deb
 sudo apt update
 sudo apt install libnccl2 libnccl-dev
 ```
+=======
+>>>>>>> origin/main

@@ -1,3 +1,4 @@
+<<<<<<< HEAD:client/pyproject.toml
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
@@ -28,3 +29,51 @@ where = ["."]
 
 [tool.setuptools.dynamic]
 version = { attr = "cli.version.__version__" }
+=======
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm_grpc_service"
+description = "Package for setting up a llm worker"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dynamic = ['version']
+dependencies = [
+    "click==8.1.7",
+    "grpcio",
+    "grpcio-tools",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+server = [
+    "accelerate",
+    "bitsandbytes",
+    "transformers",
+    "torch",
+    "sentencepiece",
+    "safetensors",
+    "grpcio-reflection",
+]
+
+[project.scripts]
+llm =  "cli:main.start"
+llm-compile =  "cli:compile.start"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+
+[tool.setuptools.dynamic]
+version = {attr = "cli.version.__version__"}
+>>>>>>> origin/main:pyproject.toml
