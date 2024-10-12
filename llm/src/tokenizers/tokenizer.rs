@@ -214,7 +214,7 @@ impl Tokenizer {
     pub fn load(model_type: ModelType) -> TokenizerResult<Self> {
         let api = api::sync::ApiBuilder::new()
             .with_cache_dir("./.cache/huggingface".into())
-            .with_token(Some("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".to_owned()))
+            .with_token(Some("....".to_owned()))
             .build()?;
         let model_id = model_type.path();
         tracing::debug!("loading model_id: {model_id}");
